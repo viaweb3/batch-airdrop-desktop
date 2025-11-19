@@ -1,8 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Database as DatabaseType } from 'better-sqlite3';
 import { WalletService } from './WalletService';
 import { CampaignExecutor } from './CampaignExecutor';
-import { DatabaseManager } from '../database/schema';
+import { DatabaseManager } from '../database/sqlite-schema';
 
 export interface CampaignData {
   name: string;
@@ -32,7 +31,7 @@ export interface Campaign {
 }
 
 export class CampaignService {
-  private db: DatabaseType;
+  private db: any;
   private walletService: WalletService;
   private executor: CampaignExecutor;
   private databaseManager: DatabaseManager;

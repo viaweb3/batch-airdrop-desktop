@@ -39,11 +39,18 @@ function createWindow() {
 }
 
 // 应用准备就绪
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log('App is ready, setting up IPC handlers...');
-  setupIPCHandlers();
-  console.log('IPC handlers set up, creating window...');
-  createWindow();
+
+  try {
+    await setupIPCHandlers();
+    console.log('IPC handlers set up successfully, creating window...');
+    createWindow();
+  } catch (error) {
+    console.error('Failed to set up IPC handlers:', error);
+    app.quit();
+    return;
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -1,0 +1,171 @@
+{
+  "config": {
+    "configFile": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/playwright.config.ts",
+    "rootDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e/global-setup.ts",
+    "globalTeardown": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e/global-teardown.ts",
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-report/results.json"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "playwright-report/results.xml"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "Microsoft Edge",
+        "name": "Microsoft Edge",
+        "testDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "Google Chrome",
+        "name": "Google Chrome",
+        "testDir": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.1",
+    "workers": 4,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://localhost:5173",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [],
+  "errors": [
+    {
+      "message": "ReferenceError: jest is not defined",
+      "stack": "ReferenceError: jest is not defined\n    at Object.<anonymous> (/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e/workflow.test.ts:5:1)",
+      "location": {
+        "file": "/Users/ffyu/Documents/GitHub/cryptocast-desktop/src/__tests__/e2e/workflow.test.ts",
+        "column": 1,
+        "line": 5
+      },
+      "snippet": "\u001b[90m   at \u001b[39mworkflow.test.ts:5\n\n  3 |\n  4 | // Mock Electron module - mocks are hoisted, so define inline\n> 5 | jest.mock('electron', () => {\n    | ^\n  6 |   const mockApp = {\n  7 |     getPath: jest.fn((name: string) => {\n  8 |       if (name === 'userData') {"
+    }
+  ],
+  "stats": {
+    "startTime": "2025-11-19T14:33:33.131Z",
+    "duration": 706.7,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

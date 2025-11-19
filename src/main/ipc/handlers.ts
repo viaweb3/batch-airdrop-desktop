@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { DatabaseManager } from '../database/schema';
+import { DatabaseManager } from '../database/sqlite-schema';
 import { CampaignService } from '../services/CampaignService';
 import { WalletService } from '../services/WalletService';
 import { BlockchainService } from '../services/BlockchainService';
@@ -19,23 +19,40 @@ let settingsService: SettingsService;
 let priceService: PriceService;
 let contractService: ContractService;
 
-export function setupIPCHandlers() {
+export async function setupIPCHandlers() {
   // 初始化服务
   try {
+    console.log('Initializing database manager...');
     databaseManager = new DatabaseManager();
+
+    console.log('Initializing campaign service...');
     campaignService = new CampaignService(databaseManager);
+
+    console.log('Initializing wallet service...');
     walletService = new WalletService();
+
+    console.log('Initializing price service...');
     priceService = new PriceService(databaseManager);
+
+    console.log('Initializing blockchain service...');
     blockchainService = new BlockchainService(priceService);
+
+    console.log('Initializing chain service...');
     chainService = new ChainService(databaseManager);
+
+    console.log('Initializing file service...');
     fileService = new FileService(databaseManager);
+
+    console.log('Initializing settings service...');
     settingsService = new SettingsService(databaseManager);
+
+    console.log('Initializing contract service...');
     contractService = new ContractService();
 
     console.log('All services initialized successfully');
   } catch (error) {
     console.error('Failed to initialize services:', error);
-    return;
+    throw error;
   }
 
   // 活动相关
@@ -52,11 +69,15 @@ export function setupIPCHandlers() {
 
   ipcMain.handle('campaign:list', async (_event, filters) => {
     try {
-      console.log('获取活动列表:', filters);
+      console.log('[IPC] campaign:list called with filters:', filters);
+      if (!campaignService) {
+        throw new Error('CampaignService not initialized');
+      }
       const campaigns = await campaignService.listCampaigns(filters);
+      console.log('[IPC] campaign:list success, returning', campaigns.length, 'campaigns');
       return campaigns;
     } catch (error) {
-      console.error('获取活动列表失败:', error);
+      console.error('[IPC] campaign:list failed:', error);
       throw new Error(`获取活动列表失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   });
@@ -399,11 +420,15 @@ export function setupIPCHandlers() {
 
   ipcMain.handle('price:getPrices', async (_event, symbols) => {
     try {
-      console.log('批量获取价格:', symbols);
+      console.log('[IPC] price:getPrices called with symbols:', symbols);
+      if (!priceService) {
+        throw new Error('PriceService not initialized');
+      }
       const prices = await priceService.getPricesForSymbols(symbols);
+      console.log('[IPC] price:getPrices success, returning', Object.keys(prices).length, 'prices');
       return prices;
     } catch (error) {
-      console.error('批量获取价格失败:', error);
+      console.error('[IPC] price:getPrices failed:', error);
       throw new Error(`批量获取价格失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   });

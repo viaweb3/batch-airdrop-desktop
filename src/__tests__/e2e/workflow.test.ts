@@ -1,4 +1,4 @@
-import { createTempTestDir, cleanupTempDir } from '../../utils/testUtils';
+import { createTempTestDir, cleanupTempDir } from '../utils/testUtils';
 import path from 'path';
 
 // Mock Electron module - mocks are hoisted, so define inline

@@ -1,4 +1,4 @@
-import type { Database as DatabaseType } from 'better-sqlite3';
+
 
 export interface AppSettings {
   // 通用设置
@@ -48,7 +48,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export class SettingsService {
-  private db: DatabaseType;
+  private db: any;
 
   constructor(databaseManager: any) {
     this.db = databaseManager.getDatabase();

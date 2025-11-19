@@ -2,8 +2,8 @@ import { ContractService } from './ContractService';
 import { WalletService } from './WalletService';
 import { GasService } from './GasService';
 import { BlockchainService } from './BlockchainService';
-import type { DatabaseManager } from '../database/schema';
-import type { Database as DatabaseType } from 'better-sqlite3';
+import type { DatabaseManager } from '../database/sqlite-schema';
+
 
 export interface ExecutionProgress {
   campaignId: string;
@@ -22,7 +22,7 @@ export interface Recipient {
 }
 
 export class CampaignExecutor {
-  private db: DatabaseType;
+  private db: any;
   private contractService: ContractService;
   private walletService: WalletService;
   private gasService: GasService;

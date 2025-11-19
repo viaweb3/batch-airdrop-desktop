@@ -3,7 +3,7 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse';
 import { stringify } from 'csv-stringify';
-import type { Database as DatabaseType } from 'better-sqlite3';
+
 
 export interface CSVRow {
   address: string;
@@ -18,7 +18,7 @@ export interface ReportData {
 }
 
 export class FileService {
-  private db: DatabaseType;
+  private db: any;
 
   constructor(databaseManager: any) {
     this.db = databaseManager.getDatabase();

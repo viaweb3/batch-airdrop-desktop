@@ -1,4 +1,3 @@
-import type { Database as DatabaseType } from 'better-sqlite3';
 import { ethers } from 'ethers';
 import { Connection } from '@solana/web3.js';
 
@@ -36,7 +35,7 @@ export interface RPCTestResult {
 }
 
 export class ChainService {
-  private db: DatabaseType;
+  private db: any;
 
   constructor(databaseManager: any) {
     this.db = databaseManager.getDatabase();

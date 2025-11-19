@@ -92,11 +92,11 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white">
+    <div className="flex h-screen bg-cryptocast-dark text-white">
       {/* 侧边栏 */}
-      <aside className="w-64 bg-gray-800 p-4">
+      <aside className="w-64 bg-cryptocast-secondary p-4">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold">批量发奖工具</h1>
+          <h1 className="text-2xl font-bold text-cryptocast-purple">CryptoCast</h1>
           <p className="text-sm text-gray-400">v1.0.0</p>
         </div>
 
