@@ -1,6 +1,6 @@
-import { ContractService } from '../../../main/services/ContractService';
-import { GasService } from '../../../main/services/GasService';
-import { createTempTestDir, cleanupTempDir, mockEVMChain } from '../../utils/testUtils';
+import { ContractService } from '../../main/services/ContractService';
+import { GasService } from '../../main/services/GasService';
+import { createTempTestDir, cleanupTempDir, mockEVMChain } from '../utils/testUtils';
 import { ethers } from 'ethers';
 
 // Mock ethers for testing
@@ -10,10 +10,10 @@ jest.mock('ethers', () => ({
     Wallet: jest.fn(),
     Contract: jest.fn(),
     ContractFactory: jest.fn(),
-    parseUnits: jest.fn((value, decimals) => ethers.parseUnits || BigInt(Math.floor(parseFloat(value) * Math.pow(10, decimals)))),
-    formatUnits: jest.fn((value, decimals) => ethers.formatUnits || (Number(value) / Math.pow(10, decimals)).toString()),
-    id: jest.fn((signature) => ethers.id || `0x${'0'.repeat(63)}`),
-    hexlify: jest.fn((value) => ethers.hexlify || `0x${'0'.repeat(63)}`)
+    parseUnits: jest.fn((value, decimals) => BigInt(Math.floor(parseFloat(value) * Math.pow(10, decimals)))),
+    formatUnits: jest.fn((value, decimals) => (Number(value) / Math.pow(10, decimals)).toString()),
+    id: jest.fn((signature) => `0x${'0'.repeat(63)}`),
+    hexlify: jest.fn((value) => `0x${'0'.repeat(63)}`)
   }
 }));
 
@@ -119,7 +119,7 @@ describe('ContractService', () => {
           hash: '0xapprovetxhash'
         }),
         wait: jest.fn().mockResolvedValue({})
-      });
+      };
 
       ethers.JsonRpcProvider.mockImplementation(() => mockProvider);
       ethers.Wallet.mockImplementation(() => mockWallet);

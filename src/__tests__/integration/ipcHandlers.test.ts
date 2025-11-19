@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { setupIPCHandlers } from '../../../main/ipc/handlers';
+import { setupIPCHandlers } from '../../main/ipc/handlers';
 import { createTempTestDir, cleanupTempDir } from '../../utils/testUtils';
 
 // Mock dependencies

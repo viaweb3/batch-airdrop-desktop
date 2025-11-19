@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Database as DatabaseType } from 'better-sqlite3';
 import { WalletService } from './WalletService';
+import { CampaignExecutor } from './CampaignExecutor';
 import { DatabaseManager } from '../database/schema';
 
 export interface CampaignData {
@@ -33,10 +34,14 @@ export interface Campaign {
 export class CampaignService {
   private db: DatabaseType;
   private walletService: WalletService;
+  private executor: CampaignExecutor;
+  private databaseManager: DatabaseManager;
 
   constructor(databaseManager: DatabaseManager) {
     this.db = databaseManager.getDatabase();
+    this.databaseManager = databaseManager;
     this.walletService = new WalletService();
+    this.executor = new CampaignExecutor(databaseManager);
   }
 
   async createCampaign(data: CampaignData): Promise<Campaign> {
@@ -186,22 +191,29 @@ export class CampaignService {
     }
   }
 
-  async startCampaign(id: string): Promise<{ success: boolean }> {
+  async startCampaign(
+    id: string,
+    password: string,
+    batchSize?: number,
+    onProgress?: (progress: any) => void
+  ): Promise<{ success: boolean }> {
     try {
       const campaign = await this.getCampaignById(id);
       if (!campaign) {
         throw new Error('Campaign not found');
       }
 
-      if (campaign.status !== 'CREATED' && campaign.status !== 'READY') {
+      if (campaign.status !== 'CREATED' && campaign.status !== 'READY' && campaign.status !== 'PAUSED') {
         throw new Error('Campaign is not ready to start');
       }
 
-      await this.updateCampaignStatus(id, 'SENDING');
+      this.addAuditLog('CAMPAIGN_STARTED', `Campaign ${id} execution started`);
 
-      // 这里应该触发实际的发送逻辑
-      // 目前只是更新状态
-      this.addAuditLog('CAMPAIGN_STARTED', `Campaign ${id} started`);
+      // Execute campaign in background (non-blocking)
+      this.executor.executeCampaign(id, password, batchSize, onProgress).catch(error => {
+        console.error('Campaign execution error:', error);
+        this.addAuditLog('CAMPAIGN_ERROR', `Campaign ${id} execution error: ${error.message}`);
+      });
 
       return { success: true };
     } catch (error) {
@@ -221,9 +233,10 @@ export class CampaignService {
         throw new Error('Only sending campaigns can be paused');
       }
 
-      await this.updateCampaignStatus(id, 'PAUSED');
+      // Request executor to pause
+      this.executor.pauseExecution(id);
 
-      this.addAuditLog('CAMPAIGN_PAUSED', `Campaign ${id} paused`);
+      this.addAuditLog('CAMPAIGN_PAUSE_REQUESTED', `Campaign ${id} pause requested`);
 
       return { success: true };
     } catch (error) {

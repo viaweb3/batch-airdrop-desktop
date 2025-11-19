@@ -1,5 +1,5 @@
-import { WalletService } from '../../../main/services/WalletService';
-import { createTempTestDir, cleanupTempDir } from '../../utils/testUtils';
+import { WalletService } from '../../main/services/WalletService';
+import { createTempTestDir, cleanupTempDir } from '../utils/testUtils';
 import fs from 'fs';
 import path from 'path';
 

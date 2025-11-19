@@ -127,7 +127,8 @@ export default function CampaignDetail() {
 
     try {
       if (window.electronAPI?.file) {
-        const data = await window.electronAPI.file.readCSV(file.path);
+        // In Electron, File objects have a path property
+        const data = await window.electronAPI.file.readCSV((file as any).path);
         const parsedData = data.map((row: any) => ({
           address: row.address || row.Address || row.地址,
           amount: row.amount || row.Amount || row.金额 || '0'

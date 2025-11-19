@@ -1,42 +1,44 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
-import { setupIPCHandlers } from '../../../main/ipc/handlers';
 import { createTempTestDir, cleanupTempDir } from '../../utils/testUtils';
 import path from 'path';
 
-// Mock Electron app before importing
-const mockApp = {
-  getPath: jest.fn((name: string) => {
-    if (name === 'userData') {
-      return path.join(createTempTestDir(), 'electron-test');
-    }
-    return '/mock/path';
-  }),
-  quit: jest.fn(),
-  on: jest.fn(),
-  once: jest.fn(),
-  whenReady: jest.fn().mockResolvedValue(undefined)
-};
-
-// Mock BrowserWindow
-const mockWindow = {
-  loadURL: jest.fn().mockResolvedValue(undefined),
-  on: jest.fn(),
-  once: jest.fn(),
-  webContents: {
-    openDevTools: jest.fn(),
-    on: jest.fn()
-  }
-};
-
-jest.mock('electron', () => ({
-  app: mockApp,
-  BrowserWindow: jest.fn().mockImplementation(() => mockWindow),
-  ipcMain: {
-    handle: jest.fn(),
+// Mock Electron module - mocks are hoisted, so define inline
+jest.mock('electron', () => {
+  const mockApp = {
+    getPath: jest.fn((name: string) => {
+      if (name === 'userData') {
+        return '/tmp/electron-test';
+      }
+      return '/mock/path';
+    }),
+    quit: jest.fn(),
     on: jest.fn(),
-    handlerMap: new Map()
-  }
-}), { virtual: true });
+    once: jest.fn(),
+    whenReady: jest.fn().mockResolvedValue(undefined)
+  };
+
+  const mockWindow = {
+    loadURL: jest.fn().mockResolvedValue(undefined),
+    on: jest.fn(),
+    once: jest.fn(),
+    webContents: {
+      openDevTools: jest.fn(),
+      on: jest.fn()
+    }
+  };
+
+  return {
+    app: mockApp,
+    BrowserWindow: jest.fn().mockImplementation(() => mockWindow),
+    ipcMain: {
+      handle: jest.fn(),
+      on: jest.fn(),
+      handlerMap: new Map()
+    }
+  };
+}, { virtual: true });
+
+import { app, BrowserWindow, ipcMain } from 'electron';
+import { setupIPCHandlers } from '../../main/ipc/handlers';
 
 describe('End-to-End Workflow Tests', () => {
   let testDir: string;

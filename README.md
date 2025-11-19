@@ -30,12 +30,14 @@
 3. **[技术挑战与解决方案](./CHALLENGES.md)** - 6大核心挑战的深度分析
 4. **[实施路线图](./ROADMAP_ELECTRON.md)** - 6周详细开发计划
 5. **[产品形态对比](./PRODUCT_OPTIONS.md)** - 三种产品方案的对比分析
+6. **[部署文档](./DEPLOYMENT.md)** - Sepolia 测试网部署记录与使用说明
 
 ### 推荐阅读顺序
 1. 先阅读 `PRODUCT_OPTIONS.md` 了解为什么选择 Electron
 2. 再阅读 `REQUIREMENTS.md` 理解业务需求
 3. 然后看 `ARCHITECTURE_ELECTRON.md` 了解技术实现
-4. 最后按照 `ROADMAP_ELECTRON.md` 开始开发
+4. 查看 `DEPLOYMENT.md` 了解合约部署信息
+5. 最后按照 `ROADMAP_ELECTRON.md` 开始开发
 
 ---
 
@@ -113,9 +115,8 @@ batch-airdrop-desktop/
 │       └── index.html
 │
 ├── contracts/                 # 智能合约
-│   ├── src/
-│   │   └── BatchAirdrop.sol
-│   └── test/
+│   └── src/
+│       └── BatchAirdropContract.sol  # 极简版批量空投合约
 │
 ├── assets/                    # 应用图标等资源
 ├── docs/                      # 文档

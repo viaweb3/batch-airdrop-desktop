@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { setupTestApp, teardownTestApp } from '../utils/testApp';
-import { DatabaseService } from '../../../main/services/DatabaseService';
+import { DatabaseService } from '../../main/services/DatabaseService';
 
 // Mock electron environment
 const mockElectronAPI = {

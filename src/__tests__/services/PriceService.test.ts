@@ -1,6 +1,6 @@
-import { PriceService } from '../../../main/services/PriceService';
-import { DatabaseManager } from '../../../main/database/schema';
-import { createTempTestDir, cleanupTempDir, createMockPriceData, createMockGasPrice } from '../../utils/testUtils';
+import { PriceService } from '../../main/services/PriceService';
+import { DatabaseManager } from '../../main/database/schema';
+import { createTempTestDir, cleanupTempDir, createMockPriceData, createMockGasPrice } from '../utils/testUtils';
 import axios from 'axios';
 
 // Mock axios

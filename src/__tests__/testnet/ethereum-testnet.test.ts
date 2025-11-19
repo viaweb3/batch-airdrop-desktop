@@ -60,7 +60,7 @@ describe('Ethereum Testnet Integration Tests', () => {
 
     expect(gasInfo).toHaveProperty('gasPrice');
     expect(gasInfo).toHaveProperty('network');
-    expect(gasInfo).toHaveProperty('gasLimit');
+    expect(gasInfo).toHaveProperty('estimatedGasLimit');
     expect(gasInfo).toHaveProperty('estimatedCost');
 
     expect(parseFloat(gasInfo.gasPrice)).toBeGreaterThan(0);

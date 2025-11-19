@@ -1,6 +1,6 @@
-import { CampaignService } from '../../../main/services/CampaignService';
-import { DatabaseManager } from '../../../main/database/schema';
-import { createTempTestDir, cleanupTempDir, mockCampaign } from '../../utils/testUtils';
+import { CampaignService } from '../../main/services/CampaignService';
+import { DatabaseManager } from '../../main/database/schema';
+import { createTempTestDir, cleanupTempDir, mockCampaign } from '../utils/testUtils';
 
 // Mock dependencies
 jest.mock('axios');

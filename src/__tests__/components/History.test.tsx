@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { jest } from '@jest/globals';
-import History from '../../../renderer/src/pages/History';
+import History from '../../renderer/src/pages/History';
 
 // Mock React Router's useNavigate
 const mockNavigate = jest.fn();

@@ -198,6 +198,26 @@ export class WalletService {
     };
   }
 
+  /**
+   * Decrypt wallet private key using master key
+   */
+  public decryptWalletKey(encryptedKey: string): string {
+    if (!this.masterKey) {
+      throw new Error('Wallet is locked. Please unlock first.');
+    }
+
+    // Parse encrypted key format: iv:encrypted
+    const parts = encryptedKey.split(':');
+    if (parts.length !== 2) {
+      throw new Error('Invalid encrypted key format');
+    }
+
+    const iv = parts[0];
+    const encrypted = parts[1];
+
+    return this.decrypt(encrypted, iv, this.masterKey);
+  }
+
   private decrypt(encryptedData: string, iv: string, key: Buffer): string {
     if (!this.masterKey) {
       throw new Error('Wallet is locked');
@@ -372,8 +392,26 @@ export class WalletService {
     }
   }
 
-  generateQRCode(privateKey: string): string {
-    // 这里应该使用QR码生成库，为简化返回base64编码的私钥
-    return Buffer.from(privateKey).toString('base64');
+  async generateQRCode(data: string): Promise<string> {
+    try {
+      const QRCode = await import('qrcode');
+
+      // Generate QR code as data URL
+      const qrCodeDataURL = await QRCode.toDataURL(data, {
+        errorCorrectionLevel: 'M',
+        type: 'image/png',
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
+      return qrCodeDataURL;
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      throw new Error('QR code generation failed');
+    }
   }
 }

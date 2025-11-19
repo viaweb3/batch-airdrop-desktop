@@ -3,6 +3,11 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
+// Mock uuid module to avoid ES module issues
+jest.mock('uuid', () => ({
+  v4: jest.fn(() => 'test-uuid-' + Math.random().toString(36).substring(7))
+}));
+
 // Global test setup
 beforeAll(() => {
   // Set test environment variables

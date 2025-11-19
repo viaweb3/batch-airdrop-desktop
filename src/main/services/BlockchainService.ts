@@ -103,8 +103,39 @@ export class BlockchainService {
 
     let tokenBalance: string | undefined;
     if (tokenAddress) {
-      // 简化处理，暂时不实现SPL token余额查询
-      tokenBalance = '0';
+      try {
+        // 导入 SPL Token 程序
+        const { TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
+
+        // 获取 token mint 地址
+        const mintPublicKey = new PublicKey(tokenAddress);
+
+        // 获取关联的 token 账户地址
+        const tokenAccounts = await connection.getTokenAccountsByOwner(publicKey, {
+          mint: mintPublicKey,
+        });
+
+        if (tokenAccounts.value.length > 0) {
+          // 解析 token 账户数据
+          const accountInfo = tokenAccounts.value[0].account;
+          const data = Buffer.from(accountInfo.data);
+
+          // Token账户数据结构: amount在偏移量64的位置，占8字节
+          const amount = data.readBigUInt64LE(64);
+
+          // 获取 token decimals
+          const mintInfo = await connection.getParsedAccountInfo(mintPublicKey);
+          const decimals = (mintInfo.value?.data as any)?.parsed?.info?.decimals || 9;
+
+          // 转换为可读格式
+          tokenBalance = (Number(amount) / Math.pow(10, decimals)).toString();
+        } else {
+          tokenBalance = '0';
+        }
+      } catch (error) {
+        console.error('Failed to get SPL token balance:', error);
+        tokenBalance = '0';
+      }
     }
 
     return {

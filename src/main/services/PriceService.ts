@@ -205,7 +205,7 @@ export class PriceService {
         WHERE symbol = ?
         ORDER BY timestamp DESC
         LIMIT 1
-      `).get(symbol.toUpperCase());
+      `).get(symbol.toUpperCase()) as { price: number } | undefined;
 
       return result ? result.price : 0;
     } catch (error) {
@@ -227,7 +227,15 @@ export class PriceService {
         WHERE symbol = ?
         ORDER BY timestamp DESC
         LIMIT 1
-      `).get(symbol.toUpperCase());
+      `).get(symbol.toUpperCase()) as {
+        symbol: string;
+        price: number;
+        change_24h: number;
+        change_percent_24h: number;
+        market_cap: number;
+        volume_24h: number;
+        timestamp: number;
+      } | undefined;
 
       if (result) {
         return {
@@ -377,6 +385,51 @@ export class PriceService {
     this.clearCache();
     this.updateAllPrices();
     this.updateGasPrices();
+  }
+
+  /**
+   * Save historical price data to database
+   */
+  async saveHistoricalPrice(symbol: string, price: number, change24h: number): Promise<void> {
+    try {
+      this.db.prepare(`
+        INSERT INTO price_history (symbol, price, change_24h, change_percent_24h, market_cap, volume_24h, timestamp)
+        VALUES (?, ?, ?, ?, 0, 0, ?)
+      `).run(
+        symbol.toUpperCase(),
+        price,
+        change24h,
+        0, // changePercent24h - calculate if needed
+        Date.now()
+      );
+    } catch (error) {
+      console.error('Failed to save historical price:', error);
+      throw new Error(`Failed to save historical price: ${error}`);
+    }
+  }
+
+  /**
+   * Get historical prices for a symbol
+   */
+  async getHistoricalPrices(symbol: string, days: number): Promise<Array<{ symbol: string; price: number; change: number; timestamp: string }>> {
+    try {
+      const results = this.db.prepare(`
+        SELECT symbol, price, change_24h as change, timestamp
+        FROM price_history
+        WHERE symbol = ?
+        ORDER BY timestamp DESC
+        LIMIT ?
+      `).all(symbol.toUpperCase(), days) as Array<{ symbol: string; price: number; change: number; timestamp: number }>;
+
+      // Convert timestamp to ISO string
+      return results.map(r => ({
+        ...r,
+        timestamp: new Date(r.timestamp).toISOString()
+      }));
+    } catch (error) {
+      console.error('Failed to get historical prices:', error);
+      return [];
+    }
   }
 
   stopUpdates(): void {

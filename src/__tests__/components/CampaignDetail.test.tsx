@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { jest } from '@jest/globals';
-import CampaignDetail from '../../../renderer/src/pages/CampaignDetail';
+import CampaignDetail from '../../renderer/src/pages/CampaignDetail';
 
 // Mock React Router's useParams
 const mockParams = { id: '1' };

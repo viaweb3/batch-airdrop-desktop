@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { jest } from '@jest/globals';
-import Dashboard from '../../../renderer/src/pages/Dashboard';
+import Dashboard from '../../renderer/src/pages/Dashboard';
 
 // Mock Electron API
 const mockElectronAPI = {

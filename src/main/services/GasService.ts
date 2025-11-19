@@ -30,29 +30,29 @@ export class GasService {
       // Check if network supports EIP-1559
       if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
         // EIP-1559 transaction (Ethereum, Polygon, etc.)
-        maxFeePerGas = ethers.formatUnits(
-          BigInt(Math.floor(Number(feeData.maxFeePerGas) * this.GAS_MULTIPLIER)),
-          'gwei'
-        );
-        maxPriorityFeePerGas = ethers.formatUnits(
-          BigInt(Math.floor(Number(feeData.maxPriorityFeePerGas) * this.PRIORITY_FEE_MULTIPLIER)),
-          'gwei'
-        );
+        // Calculate adjusted fees with multipliers
+        const adjustedMaxFee = (feeData.maxFeePerGas * BigInt(Math.floor(this.GAS_MULTIPLIER * 100))) / 100n;
+        const adjustedPriorityFee = (feeData.maxPriorityFeePerGas * BigInt(Math.floor(this.PRIORITY_FEE_MULTIPLIER * 100))) / 100n;
+
+        // Ensure maxPriorityFeePerGas never exceeds maxFeePerGas (EIP-1559 requirement)
+        const finalPriorityFee = adjustedPriorityFee > adjustedMaxFee ? adjustedMaxFee : adjustedPriorityFee;
+
+        maxFeePerGas = ethers.formatUnits(adjustedMaxFee, 'gwei');
+        maxPriorityFeePerGas = ethers.formatUnits(finalPriorityFee, 'gwei');
         gasPrice = maxFeePerGas;
       } else if (feeData.gasPrice) {
         // Legacy transaction
-        gasPrice = ethers.formatUnits(
-          BigInt(Math.floor(Number(feeData.gasPrice) * this.GAS_MULTIPLIER)),
-          'gwei'
-        );
+        const adjustedGasPrice = (feeData.gasPrice * BigInt(Math.floor(this.GAS_MULTIPLIER * 100))) / 100n;
+        gasPrice = ethers.formatUnits(adjustedGasPrice, 'gwei');
       }
 
       // Estimate gas for a standard transfer (as baseline)
       const estimatedGasLimit = await this.estimateGasLimit(provider, network);
 
-      // Calculate estimated costs
+      // Calculate estimated costs (fix BigInt type mixing)
       const gasPriceWei = ethers.parseUnits(gasPrice, 'gwei');
-      const estimatedCostWei = gasPriceWei * BigInt(estimatedGasLimit);
+      const estimatedGasLimitBigInt = BigInt(estimatedGasLimit);
+      const estimatedCostWei = gasPriceWei * estimatedGasLimitBigInt;
       const estimatedCost = ethers.formatEther(estimatedCostWei);
       const estimatedCostUsd = tokenPrice > 0
         ? (parseFloat(estimatedCost) * tokenPrice).toFixed(2)
@@ -158,27 +158,26 @@ export class GasService {
       let maxPriorityFeePerGas: string | undefined;
 
       if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-        // EIP-1559
-        maxFeePerGas = ethers.formatUnits(
-          BigInt(Math.floor(Number(feeData.maxFeePerGas) * this.GAS_MULTIPLIER)),
-          'gwei'
-        );
-        maxPriorityFeePerGas = ethers.formatUnits(
-          BigInt(Math.floor(Number(feeData.maxPriorityFeePerGas) * this.PRIORITY_FEE_MULTIPLIER)),
-          'gwei'
-        );
+        // EIP-1559 - use same logic as getGasInfo to ensure consistency
+        const adjustedMaxFee = (feeData.maxFeePerGas * BigInt(Math.floor(this.GAS_MULTIPLIER * 100))) / 100n;
+        const adjustedPriorityFee = (feeData.maxPriorityFeePerGas * BigInt(Math.floor(this.PRIORITY_FEE_MULTIPLIER * 100))) / 100n;
+
+        // Ensure maxPriorityFeePerGas never exceeds maxFeePerGas (EIP-1559 requirement)
+        const finalPriorityFee = adjustedPriorityFee > adjustedMaxFee ? adjustedMaxFee : adjustedPriorityFee;
+
+        maxFeePerGas = ethers.formatUnits(adjustedMaxFee, 'gwei');
+        maxPriorityFeePerGas = ethers.formatUnits(finalPriorityFee, 'gwei');
         gasPrice = maxFeePerGas;
       } else if (feeData.gasPrice) {
-        // Legacy
-        gasPrice = ethers.formatUnits(
-          BigInt(Math.floor(Number(feeData.gasPrice) * this.GAS_MULTIPLIER)),
-          'gwei'
-        );
+        // Legacy transaction
+        const adjustedGasPrice = (feeData.gasPrice * BigInt(Math.floor(this.GAS_MULTIPLIER * 100))) / 100n;
+        gasPrice = ethers.formatUnits(adjustedGasPrice, 'gwei');
       }
 
-      // Calculate costs
+      // Calculate costs (fix BigInt type mixing)
       const gasPriceWei = ethers.parseUnits(gasPrice, 'gwei');
-      const estimatedCostWei = gasPriceWei * BigInt(totalGasLimit);
+      const totalGasLimitBigInt = BigInt(totalGasLimit);
+      const estimatedCostWei = gasPriceWei * totalGasLimitBigInt;
       const estimatedCost = ethers.formatEther(estimatedCostWei);
       const estimatedCostUsd = tokenPrice > 0
         ? (parseFloat(estimatedCost) * tokenPrice).toFixed(2)
@@ -257,7 +256,7 @@ export class GasService {
     return {
       totalBatches: batchesNeeded,
       totalGasCost: totalCost,
-      totalGasCostUsd
+      totalGasCostUsd: totalCostUsd
     };
   }
 }

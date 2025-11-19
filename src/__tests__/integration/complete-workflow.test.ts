@@ -1,8 +1,8 @@
-import { CampaignService } from '../../../main/services/CampaignService';
-import { WalletService } from '../../../main/services/WalletService';
-import { ContractService } from '../../../main/services/ContractService';
-import { GasService } from '../../../main/services/GasService';
-import { DatabaseService } from '../../../main/services/DatabaseService';
+import { CampaignService } from '../../main/services/CampaignService';
+import { WalletService } from '../../main/services/WalletService';
+import { ContractService } from '../../main/services/ContractService';
+import { GasService } from '../../main/services/GasService';
+import { DatabaseService } from '../../main/services/DatabaseService';
 import { createTempTestDir, cleanupTempDir, mockEVMChain } from '../utils/testUtils';
 
 // Mock ethers for integration testing

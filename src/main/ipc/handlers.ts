@@ -72,10 +72,10 @@ export function setupIPCHandlers() {
     }
   });
 
-  ipcMain.handle('campaign:start', async (_event, id) => {
+  ipcMain.handle('campaign:start', async (_event, id, password, batchSize) => {
     try {
       console.log('开始活动:', id);
-      const result = await campaignService.startCampaign(id);
+      const result = await campaignService.startCampaign(id, password, batchSize);
       return result;
     } catch (error) {
       console.error('开始活动失败:', error);

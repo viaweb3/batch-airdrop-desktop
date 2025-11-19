@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { jest } from '@jest/globals';
-import CampaignCreate from '../../../renderer/src/pages/CampaignCreate';
+import CampaignCreate from '../../renderer/src/pages/CampaignCreate';
 
 // Mock Electron API
 const mockElectronAPI = {

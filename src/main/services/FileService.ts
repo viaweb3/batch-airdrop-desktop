@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse';
 import { stringify } from 'csv-stringify';
@@ -241,47 +242,92 @@ export class FileService {
 
   private async exportPDFReport(reportData: ReportData, fileName: string): Promise<string> {
     try {
-      // 注意：这里应该使用专门的PDF生成库，如pdf-kit或puppeteer
-      // 为简化起见，这里生成一个包含报告数据的文本文件，但命名为.pdf
       const filePath = path.join(this.getDownloadsDirectory(), fileName);
 
-      let reportContent = `活动报告\n`;
-      reportContent += `=========\n\n`;
-      reportContent += `活动名称: ${reportData.campaign.name}\n`;
-      reportContent += `活动ID: ${reportData.campaign.id}\n`;
-      reportContent += `区块链: ${reportData.campaign.chain}\n`;
-      reportContent += `代币地址: ${reportData.campaign.token_address}\n`;
-      reportContent += `状态: ${reportData.campaign.status}\n`;
-      reportContent += `创建时间: ${reportData.campaign.created_at}\n\n`;
+      // Use jsPDF for proper PDF generation
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
 
-      reportContent += `汇总统计\n`;
-      reportContent += `---------\n`;
-      reportContent += `总接收者: ${reportData.summary.totalRecipients}\n`;
-      reportContent += `已发送: ${reportData.summary.sentRecipients}\n`;
-      reportContent += `发送失败: ${reportData.summary.failedRecipients}\n`;
-      reportContent += `待发送: ${reportData.summary.pendingRecipients}\n`;
-      reportContent += `成功率: ${reportData.summary.successRate}%\n`;
-      reportContent += `总金额: ${reportData.summary.totalAmount}\n`;
-      reportContent += `已发送金额: ${reportData.summary.sentAmount}\n`;
-      reportContent += `总Gas消耗: ${reportData.summary.totalGasUsed}\n`;
-      reportContent += `总Gas成本: ${reportData.summary.totalGasCost}\n\n`;
+      let yPosition = 20; // Initialize Y position
 
-      reportContent += `详细记录\n`;
-      reportContent += `---------\n`;
+      // Title
+      doc.setFontSize(18);
+      doc.text('Campaign Report', 105, yPosition, { align: 'center' });
+      yPosition += 15;
+
+      // Campaign Info
+      doc.setFontSize(12);
+      doc.text('Campaign Information', 20, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(10);
+      doc.text(`Name: ${reportData.campaign.name}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`ID: ${reportData.campaign.id}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Chain: ${reportData.campaign.chain}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Token: ${reportData.campaign.token_address}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Status: ${reportData.campaign.status}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Created: ${reportData.campaign.created_at}`, 20, yPosition);
+      yPosition += 12;
+
+      // Summary Statistics
+      doc.setFontSize(12);
+      doc.text('Summary Statistics', 20, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(10);
+      doc.text(`Total Recipients: ${reportData.summary.totalRecipients}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Sent: ${reportData.summary.sentRecipients}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Failed: ${reportData.summary.failedRecipients}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Pending: ${reportData.summary.pendingRecipients}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Success Rate: ${reportData.summary.successRate}%`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Total Amount: ${reportData.summary.totalAmount}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Sent Amount: ${reportData.summary.sentAmount}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Gas Used: ${reportData.summary.totalGasUsed}`, 20, yPosition);
+      yPosition += 6;
+      doc.text(`Gas Cost: ${reportData.summary.totalGasCost}`, 20, yPosition);
+      yPosition += 12;
+
+      // Recipients table header
+      doc.setFontSize(12);
+      doc.text('Recipients', 20, yPosition);
+      yPosition += 8;
+
+      // Add recipients (with pagination)
+      doc.setFontSize(8);
       reportData.recipients.forEach((recipient, index) => {
-        reportContent += `${index + 1}. 地址: ${recipient.address}\n`;
-        reportContent += `   金额: ${recipient.amount}\n`;
-        reportContent += `   状态: ${recipient.status}\n`;
+        if (yPosition > 270) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.text(`${index + 1}. ${recipient.address}`, 20, yPosition);
+        yPosition += 5;
+        doc.text(`   Amount: ${recipient.amount} | Status: ${recipient.status}`, 25, yPosition);
+        yPosition += 5;
+
         if (recipient.tx_hash) {
-          reportContent += `   交易哈希: ${recipient.tx_hash}\n`;
+          doc.text(`   Tx: ${recipient.tx_hash.substring(0, 30)}...`, 25, yPosition);
+          yPosition += 5;
         }
-        if (recipient.error_message) {
-          reportContent += `   错误信息: ${recipient.error_message}\n`;
-        }
-        reportContent += `   创建时间: ${recipient.created_at}\n\n`;
+
+        yPosition += 3;
       });
 
-      fs.writeFileSync(filePath, reportContent, 'utf-8');
+      // Save PDF
+      const pdfBuffer = doc.output('arraybuffer');
+      await fsPromises.writeFile(filePath, Buffer.from(pdfBuffer));
       return filePath;
     } catch (error) {
       throw new Error(`Failed to write PDF file: ${error}`);
