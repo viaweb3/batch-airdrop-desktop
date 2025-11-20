@@ -7,17 +7,12 @@ export default function CampaignCreate() {
     name: '',
     chain: 'ethereum',
     tokenAddress: '',
-    contractAddress: '',
     recipientCount: 0,
-    totalAmount: '',
-    needsDeployment: false,
-    deployerPrivateKey: '',
-    rpcUrl: ''
+    totalAmount: ''
   });
 
   const [chains, setChains] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [deploying, setDeploying] = useState(false);
 
   useEffect(() => {
     loadChains();
@@ -28,12 +23,6 @@ export default function CampaignCreate() {
       if (window.electronAPI?.chain) {
         const evmChains = await window.electronAPI.chain.getEVMChains(true);
         setChains(evmChains);
-        if (evmChains.length > 0) {
-          setFormData(prev => ({
-            ...prev,
-            rpcUrl: evmChains[0].rpcUrl
-          }));
-        }
       }
     } catch (error) {
       console.error('加载链列表失败:', error);
@@ -48,36 +37,6 @@ export default function CampaignCreate() {
     }));
   };
 
-  const deployContract = async () => {
-    if (!formData.deployerPrivateKey || !formData.rpcUrl || !formData.tokenAddress) {
-      alert('请填写完整的合约部署信息');
-      return;
-    }
-
-    setDeploying(true);
-    try {
-      if (window.electronAPI?.contract) {
-        const config = {
-          tokenAddress: formData.tokenAddress,
-          chainId: parseInt(formData.chain),
-          rpcUrl: formData.rpcUrl,
-          deployerPrivateKey: formData.deployerPrivateKey
-        };
-
-        const result = await window.electronAPI.contract.deploy(config);
-        setFormData(prev => ({
-          ...prev,
-          contractAddress: result.contractAddress
-        }));
-        alert(`合约部署成功！地址: ${result.contractAddress}`);
-      }
-    } catch (error) {
-      console.error('合约部署失败:', error);
-      alert(`合约部署失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    } finally {
-      setDeploying(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,43 +48,36 @@ export default function CampaignCreate() {
 
     setLoading(true);
     try {
-      // 1. 首先创建新的发奖钱包
+      // 1. 创建新的活动专用钱包
       let newWallet;
       if (window.electronAPI?.wallet) {
         newWallet = await window.electronAPI.wallet.create('evm');
-        console.log('新钱包地址:', newWallet.address);
+        console.log('活动专用钱包已创建:', newWallet.address);
       }
 
-      // 2. 部署新的智能合约（每次活动都部署新合约）
-      let contractAddress;
-      if (window.electronAPI?.contract && formData.deployerPrivateKey) {
-        const config = {
-          tokenAddress: formData.tokenAddress,
-          chainId: parseInt(formData.chain),
-          rpcUrl: formData.rpcUrl,
-          deployerPrivateKey: formData.deployerPrivateKey
-        };
-
-        const deployResult = await window.electronAPI.contract.deploy(config);
-        contractAddress = deployResult.contractAddress;
-        console.log('新合约地址:', contractAddress);
-      }
-
-      // 3. 创建活动
+      // 2. 创建活动 - 状态为 CREATED，等待充值和部署合约
       if (window.electronAPI?.campaign) {
         const campaignData = {
           name: formData.name,
           chain: formData.chain,
           tokenAddress: formData.tokenAddress,
-          status: 'READY', // 直接设为就绪状态，因为合约已部署
+          status: 'CREATED', // 初始状态：已创建，等待充值
           walletAddress: newWallet?.address,
-          walletEncryptedKey: newWallet?.encryptedKey,
-          contractAddress: contractAddress
+          walletPrivateKeyBase64: newWallet?.privateKeyBase64,
+          contractAddress: null // 合约稍后由运营人员手动部署
         };
 
         const campaign = await window.electronAPI.campaign.create(campaignData);
 
-        alert(`活动创建成功！\n📍 活动ID: ${campaign.id}\n💰 发奖地址: ${newWallet?.address}\n📋 合约地址: ${contractAddress}`);
+        alert(
+          `活动创建成功！\n\n` +
+          `📍 活动ID: ${campaign.id}\n` +
+          `💰 活动专用地址: ${newWallet?.address}\n\n` +
+          `⏭️  下一步操作：\n` +
+          `1. 向该地址转入足够的 Gas 费\n` +
+          `2. 在活动详情页手动部署合约\n` +
+          `3. 部署成功后即可开始发放`
+        );
         navigate(`/campaign/${campaign.id}`);
       }
     } catch (error) {
@@ -137,20 +89,31 @@ export default function CampaignCreate() {
   };
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-2">创建新活动</h1>
-      <p className="text-gray-400 mb-6">
-        🎯 每个活动将创建独立的发奖钱包和智能合约，确保资金安全和活动隔离
-      </p>
+    <div className="max-w-4xl mx-auto">
+      {/* Enhanced Header */}
+      <div className="mb-8 relative overflow-hidden rounded-3xl bg-cryptocast-gradient p-8 md:p-12 shadow-cryptocast-xl cryptocast-glow-purple">
+        <div className="absolute inset-0 bg-cryptocast-gradient-shimmer opacity-20"></div>
+        <div className="relative z-10">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-cryptocast-white cryptocast-shimmer">创建新活动</h1>
+          <p className="text-xl text-cryptocast-white/90 font-medium">
+            🎯 每个活动将创建独立的专用钱包，确保资金安全和活动隔离
+          </p>
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 基本信息 */}
-        <div className="bg-gray-800 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">基本信息</h2>
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Enhanced Basic Information */}
+        <div className="card-cryptocast p-8">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-cryptocast-gradient flex items-center justify-center cryptocast-glow">
+              <span className="text-2xl">📝</span>
+            </div>
+            <h2 className="text-2xl font-bold text-cryptocast-white">基本信息</h2>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-cryptocast-secondary">
                 活动名称 *
               </label>
               <input
@@ -158,33 +121,33 @@ export default function CampaignCreate() {
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-4 glass border border-cryptocast-glass-border rounded-2xl text-cryptocast-white placeholder-cryptocast-muted focus:outline-none focus:ring-2 focus:ring-cryptocast-purple focus:border-cryptocast-purple transition-cryptocast"
                 placeholder="输入活动名称"
                 required
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-cryptocast-secondary">
                 区块链网络 *
               </label>
               <select
                 name="chain"
                 value={formData.chain}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-4 glass border border-cryptocast-glass-border rounded-2xl text-cryptocast-white focus:outline-none focus:ring-2 focus:ring-cryptocast-purple focus:border-cryptocast-purple transition-cryptocast"
                 required
               >
                 {chains.map(chain => (
-                  <option key={chain.chainId} value={chain.chainId}>
+                  <option key={chain.chainId} value={chain.chainId} className="bg-cryptocast-bg-secondary">
                     {chain.name} ({chain.symbol})
                   </option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-cryptocast-secondary">
                 代币地址 *
               </label>
               <input
@@ -192,14 +155,14 @@ export default function CampaignCreate() {
                 name="tokenAddress"
                 value={formData.tokenAddress}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-4 glass border border-cryptocast-glass-border rounded-2xl text-cryptocast-white placeholder-cryptocast-muted focus:outline-none focus:ring-2 focus:ring-cryptocast-purple focus:border-cryptocast-purple transition-cryptocast font-mono"
                 placeholder="0x..."
                 required
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-cryptocast-secondary">
                 预计收币人数
               </label>
               <input
@@ -207,7 +170,7 @@ export default function CampaignCreate() {
                 name="recipientCount"
                 value={formData.recipientCount}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-4 glass border border-cryptocast-glass-border rounded-2xl text-cryptocast-white placeholder-cryptocast-muted focus:outline-none focus:ring-2 focus:ring-cryptocast-purple focus:border-cryptocast-purple transition-cryptocast"
                 placeholder="0"
                 min="0"
               />
@@ -215,87 +178,104 @@ export default function CampaignCreate() {
           </div>
         </div>
 
-        {/* 合约部署配置 */}
-        <div className="bg-gray-800 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">
-            🔐 合约部署配置
-            <span className="ml-2 text-sm text-green-400">（每次活动自动部署新合约）</span>
-          </h2>
-
-          <div className="p-4 bg-blue-900 border border-blue-700 rounded-lg mb-4">
-            <p className="text-sm text-blue-200">
-              💡 <strong>自动化流程：</strong>
-            </p>
-            <ul className="text-sm text-blue-200 mt-2 space-y-1">
-              <li>1️⃣ 自动创建新的发奖钱包（资金隔离）</li>
-              <li>2️⃣ 自动部署新的 AbsoluteMinimal 批量转账合约</li>
-              <li>3️⃣ 合约仅30行代码，每次转账可节省 3,000-5,000 gas</li>
-              <li>4️⃣ 包含重入保护，安全性最高</li>
-            </ul>
+        {/* Enhanced Security Process Explanation */}
+        <div className="card-cryptocast p-8 cryptocast-glow-green">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl glass flex items-center justify-center cryptocast-float">
+              <span className="text-2xl">🔐</span>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-cryptocast-white">安全部署流程</h2>
+              <p className="text-sm text-cryptocast-green-bright mt-1 font-medium">（三步走，无需私钥）</p>
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                🗝️ 部署者私钥 *
-              </label>
-              <input
-                type="password"
-                name="deployerPrivateKey"
-                value={formData.deployerPrivateKey}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="输入部署者私钥（用于部署新合约）"
-                required
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                此私钥仅用于部署合约，部署完成后不需要保存
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                🌐 RPC URL *
-              </label>
-              <input
-                type="text"
-                name="rpcUrl"
-                value={formData.rpcUrl}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="https://..."
-                required
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                使用可靠的RPC节点，如Infura、Alchemy或自建节点
-              </p>
-            </div>
-
-            {formData.contractAddress && (
-              <div className="p-3 bg-green-900 border border-green-700 rounded text-sm">
-                ✅ 测试合约已部署: {formData.contractAddress}
-                <p className="text-green-200 mt-1">点击"创建活动"将部署新的生产合约</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="glass p-6 rounded-2xl border-l-4 border-cryptocast-cyan">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl glass flex items-center justify-center cryptocast-glow-cyan">
+                  <span className="text-xl">💡</span>
+                </div>
+                <h3 className="text-lg font-bold text-cryptocast-white">改进后的安全流程</h3>
               </div>
-            )}
+              <ul className="space-y-3">
+                <li className="flex items-start gap-3 text-cryptocast-secondary">
+                  <span className="text-cryptocast-cyan font-bold text-lg mt-0.5">1️⃣</span>
+                  <span className="text-sm">系统自动创建活动专用地址（无需手动输入私钥）</span>
+                </li>
+                <li className="flex items-start gap-3 text-cryptocast-secondary">
+                  <span className="text-cryptocast-cyan font-bold text-lg mt-0.5">2️⃣</span>
+                  <span className="text-sm">运营人员向该地址充值 Gas 费</span>
+                </li>
+                <li className="flex items-start gap-3 text-cryptocast-secondary">
+                  <span className="text-cryptocast-cyan font-bold text-lg mt-0.5">3️⃣</span>
+                  <span className="text-sm">在活动详情页手动部署合约（使用专用地址）</span>
+                </li>
+                <li className="flex items-start gap-3 text-cryptocast-secondary">
+                  <span className="text-cryptocast-cyan font-bold text-lg mt-0.5">4️⃣</span>
+                  <span className="text-sm">部署成功后，使用该合约进行批量发放</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="glass p-6 rounded-2xl border-l-4 border-cryptocast-green">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl glass flex items-center justify-center cryptocast-glow-green">
+                  <span className="text-xl">✅</span>
+                </div>
+                <h3 className="text-lg font-bold text-cryptocast-white">安全优势</h3>
+              </div>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-3 text-cryptocast-secondary">
+                  <span className="text-cryptocast-green text-lg mt-0.5">•</span>
+                  <span className="text-sm">私钥永远不会出现在创建活动的表单中</span>
+                </li>
+                <li className="flex items-start gap-3 text-cryptocast-secondary">
+                  <span className="text-cryptocast-green text-lg mt-0.5">•</span>
+                  <span className="text-sm">每个活动使用独立的专用地址，资金完全隔离</span>
+                </li>
+                <li className="flex items-start gap-3 text-cryptocast-secondary">
+                  <span className="text-cryptocast-green text-lg mt-0.5">•</span>
+                  <span className="text-sm">合约部署由系统在后台安全执行</span>
+                </li>
+                <li className="flex items-start gap-3 text-cryptocast-secondary">
+                  <span className="text-cryptocast-green text-lg mt-0.5">•</span>
+                  <span className="text-sm">包含重入保护，每次转账节省 3,000-5,000 gas</span>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 
-        {/* 提交按钮 */}
-        <div className="flex space-x-4">
+        {/* Enhanced Submit Buttons */}
+        <div className="flex gap-6">
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-cryptocast shadow-glow-purple hover:shadow-glow-cyan flex-1 text-lg px-8 py-5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
-            {loading ? '创建中...' : '创建活动'}
+            {loading ? (
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-6 h-6 border-3 border-cryptocast-white/30 border-t-cryptocast-white rounded-full animate-spin"></div>
+                <span>创建中...</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-2xl">🚀</span>
+                <span>创建活动</span>
+              </div>
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            className="glass hover:bg-cryptocast-bg-card-hover transition-cryptocast px-8 py-5 rounded-2xl border border-cryptocast-glass-border text-lg font-medium text-cryptocast-secondary hover:text-cryptocast-white"
           >
-            取消
+            <div className="flex items-center gap-3">
+              <span className="text-xl">❌</span>
+              <span>取消</span>
+            </div>
           </button>
         </div>
       </form>

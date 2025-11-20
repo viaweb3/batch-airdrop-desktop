@@ -114,379 +114,370 @@ export default function Dashboard() {
 
   return (
     <div>
-      {/* Hero Section with Welcome Banner */}
-      <div className="mb-8 relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 p-6 md:p-8 border border-primary/20">
+      {/* Hero Section with Enhanced Welcome Banner */}
+      <div className="mb-8 relative overflow-hidden rounded-3xl bg-cryptocast-gradient p-6 md:p-8 shadow-cryptocast-xl cryptocast-glow-purple">
+        <div className="absolute inset-0 bg-cryptocast-gradient-shimmer opacity-20"></div>
         <div className="relative z-10">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6 mb-8">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+              <h1 className="text-4xl md:text-5xl font-bold mb-3 text-cryptocast-white cryptocast-shimmer">
                 欢迎回来
               </h1>
-              <p className="text-base text-base-content/70">通过 CryptoCast 管理您的加密货币空投活动</p>
+              <p className="text-lg text-cryptocast-white/90 font-medium">通过 CryptoCast 管理您的加密货币空投活动</p>
             </div>
             <button
               onClick={() => navigate('/campaign/create')}
-              className="btn btn-primary gap-2 shadow-lg hover:shadow-primary/50 transition-all hover:scale-105"
+              className="btn-cryptocast shadow-cryptocast-xl hover:shadow-glow-purple transition-all flex items-center gap-3 text-lg px-6 py-4"
             >
-              <span className="text-xl">➕</span>
+              <span className="text-2xl">➕</span>
               创建新活动
             </button>
           </div>
 
-          {/* Quick Stats Summary */}
-          <div className="grid grid-cols-3 gap-4 md:gap-6 mt-6">
-            <div className="text-center md:text-left">
-              <div className="text-2xl md:text-3xl font-bold text-primary">{stats.totalCampaigns}</div>
-              <div className="text-xs md:text-sm text-base-content/60 mt-1">活动总数</div>
+          {/* Enhanced Quick Stats Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            <div className="glass p-6 rounded-2xl text-center hover:scale-105 transition-cryptocast">
+              <div className="text-4xl md:text-5xl font-bold text-cryptocast-white mb-2">{stats.totalCampaigns}</div>
+              <div className="text-sm text-cryptocast-white/80 font-medium">活动总数</div>
             </div>
-            <div className="text-center md:text-left">
-              <div className="text-2xl md:text-3xl font-bold text-accent">{stats.completedCampaigns}</div>
-              <div className="text-xs md:text-sm text-base-content/60 mt-1">已完成</div>
+            <div className="glass p-6 rounded-2xl text-center hover:scale-105 transition-cryptocast">
+              <div className="text-4xl md:text-5xl font-bold text-cryptocast-green-bright mb-2">{stats.completedCampaigns}</div>
+              <div className="text-sm text-cryptocast-white/80 font-medium">已完成</div>
             </div>
-            <div className="text-center md:text-left">
-              <div className="text-2xl md:text-3xl font-bold text-secondary">{stats.totalRecipients.toLocaleString()}</div>
-              <div className="text-xs md:text-sm text-base-content/60 mt-1">总接收地址</div>
+            <div className="glass p-6 rounded-2xl text-center hover:scale-105 transition-cryptocast">
+              <div className="text-4xl md:text-5xl font-bold text-cryptocast-cyan-bright mb-2">{stats.totalRecipients.toLocaleString()}</div>
+              <div className="text-sm text-cryptocast-white/80 font-medium">总接收地址</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 详细统计卡片 */}
+      {/* Enhanced Detailed Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="card bg-gradient-to-br from-primary/10 to-primary/5 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border border-primary/20">
-          <div className="card-body">
-            <div className="flex justify-between items-start mb-4">
-              <div className="badge badge-primary badge-sm">活动</div>
-              <div className="text-4xl opacity-20">📊</div>
+        <div className="card-cryptocast p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div className="glass px-3 py-1 rounded-full">
+              <span className="text-sm font-medium text-cryptocast-purple">活动</span>
             </div>
-            <div className="text-4xl font-bold text-primary mb-2">{stats.totalCampaigns}</div>
-            <div className="text-sm text-base-content/70 font-medium">总活动数</div>
-            <div className="mt-4 flex items-center gap-2">
-              <div className="h-2 flex-1 bg-base-300 rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{width: '100%'}}></div>
-              </div>
+            <div className="text-5xl text-cryptocast-purple opacity-60">📊</div>
+          </div>
+          <div className="text-5xl font-bold text-cryptocast-white mb-3 cryptocast-shimmer">{stats.totalCampaigns}</div>
+          <div className="text-base text-cryptocast-secondary font-medium mb-4">总活动数</div>
+          <div className="flex items-center gap-3">
+            <div className="h-3 flex-1 bg-cryptocast-bg-tertiary rounded-full overflow-hidden">
+              <div className="h-full bg-cryptocast-gradient rounded-full cryptocast-shimmer" style={{width: '100%'}}></div>
+            </div>
+            <span className="text-sm text-cryptocast-green font-bold">100%</span>
+          </div>
+        </div>
+
+        <div className="card-cryptocast p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div className="glass px-3 py-1 rounded-full">
+              <span className="text-sm font-medium text-cryptocast-green">完成</span>
+            </div>
+            <div className="text-5xl text-cryptocast-green opacity-60">✅</div>
+          </div>
+          <div className="text-5xl font-bold text-cryptocast-white mb-3 cryptocast-shimmer">{stats.completedCampaigns}</div>
+          <div className="text-base text-cryptocast-secondary font-medium mb-4">已完成活动</div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-cryptocast-muted">
+              <span>完成率</span>
+              <span className="font-bold text-cryptocast-green-bright">
+                {stats.totalCampaigns > 0 ? Math.round((stats.completedCampaigns / stats.totalCampaigns) * 100) : 0}%
+              </span>
+            </div>
+            <div className="h-3 bg-cryptocast-bg-tertiary rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-cryptocast-green to-cryptocast-green-bright rounded-full cryptocast-shimmer transition-all duration-1000"
+                style={{width: `${stats.totalCampaigns > 0 ? (stats.completedCampaigns / stats.totalCampaigns) * 100 : 0}%`}}
+              ></div>
             </div>
           </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-accent/10 to-accent/5 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border border-accent/20">
-          <div className="card-body">
-            <div className="flex justify-between items-start mb-4">
-              <div className="badge badge-accent badge-sm">完成</div>
-              <div className="text-4xl opacity-20">✅</div>
+        <div className="card-cryptocast p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div className="glass px-3 py-1 rounded-full">
+              <span className="text-sm font-medium text-cryptocast-cyan">地址</span>
             </div>
-            <div className="text-4xl font-bold text-accent mb-2">{stats.completedCampaigns}</div>
-            <div className="text-sm text-base-content/70 font-medium">已完成活动</div>
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-base-content/60 mb-1">
-                <span>完成率</span>
-                <span className="font-bold text-accent">
-                  {stats.totalCampaigns > 0 ? Math.round((stats.completedCampaigns / stats.totalCampaigns) * 100) : 0}%
-                </span>
-              </div>
-              <progress
-                className="progress progress-accent"
-                value={stats.completedCampaigns}
-                max={stats.totalCampaigns || 1}
-              ></progress>
+            <div className="text-5xl text-cryptocast-cyan opacity-60">👥</div>
+          </div>
+          <div className="text-5xl font-bold text-cryptocast-white mb-3 cryptocast-shimmer">{stats.totalRecipients.toLocaleString()}</div>
+          <div className="text-base text-cryptocast-secondary font-medium mb-4">总收币地址数</div>
+          <div className="glass p-3 rounded-xl">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-cryptocast-muted">已发送</span>
+              <span className="font-bold text-cryptocast-cyan-bright">{stats.completedRecipients.toLocaleString()}</span>
             </div>
           </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-secondary/10 to-secondary/5 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border border-secondary/20">
-          <div className="card-body">
-            <div className="flex justify-between items-start mb-4">
-              <div className="badge badge-secondary badge-sm">地址</div>
-              <div className="text-4xl opacity-20">👥</div>
+        <div className="card-cryptocast p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div className="glass px-3 py-1 rounded-full">
+              <span className="text-sm font-medium text-cryptocast-purple">Gas</span>
             </div>
-            <div className="text-4xl font-bold text-secondary mb-2">{stats.totalRecipients.toLocaleString()}</div>
-            <div className="text-sm text-base-content/70 font-medium">总收币地址数</div>
-            <div className="mt-4 text-xs text-base-content/60">
-              <span className="font-semibold text-secondary">{stats.completedRecipients.toLocaleString()}</span> 已发送
-            </div>
+            <div className="text-5xl text-cryptocast-warning opacity-60">⚡</div>
           </div>
-        </div>
-
-        <div className="card bg-gradient-to-br from-warning/10 to-warning/5 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border border-warning/20">
-          <div className="card-body">
-            <div className="flex justify-between items-start mb-4">
-              <div className="badge badge-warning badge-sm">Gas</div>
-              <div className="text-4xl opacity-20">⚡</div>
-            </div>
-            <div className="text-4xl font-bold text-warning mb-2">{stats.totalGasUsed.toLocaleString()}</div>
-            <div className="text-sm text-base-content/70 font-medium">累计 Gas 消耗</div>
-            <div className="mt-4 text-xs text-base-content/60">
-              单位: Gwei
+          <div className="text-5xl font-bold text-cryptocast-white mb-3 cryptocast-shimmer">{stats.totalGasUsed.toLocaleString()}</div>
+          <div className="text-base text-cryptocast-secondary font-medium mb-4">累计 Gas 消耗</div>
+          <div className="glass p-3 rounded-xl">
+            <div className="text-center text-sm text-cryptocast-muted">
+              <span className="font-semibold text-cryptocast-warning-light">单位: Gwei</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 主要内容区域 - 两栏布局 */}
+      {/* Enhanced Main Content Area - Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* 左侧：进行中的活动 + 最近活动 */}
+        {/* Left Column: Active + Recent Campaigns */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* 进行中的活动 */}
-          <div className="card bg-base-300 shadow-xl border border-base-content/5">
-            <div className="card-body">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                    <span className="text-xl">🚀</span>
-                  </div>
-                  <h2 className="text-2xl font-bold">进行中的活动</h2>
+          {/* Active Campaigns */}
+          <div className="card-cryptocast p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-cryptocast-gradient flex items-center justify-center cryptocast-glow">
+                  <span className="text-2xl">🚀</span>
                 </div>
+                <h2 className="text-2xl font-bold text-cryptocast-white">进行中的活动</h2>
+              </div>
+              <button
+                onClick={() => navigate('/history')}
+                className="glass px-4 py-2 rounded-xl text-cryptocast-purple hover:text-cryptocast-white hover:bg-cryptocast-purple/20 transition-cryptocast flex items-center gap-2 text-sm font-medium"
+              >
+                查看全部
+                <span className="text-lg">→</span>
+              </button>
+            </div>
+
+            {activeCampaigns.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-32 h-32 mx-auto mb-8 rounded-full glass flex items-center justify-center cryptocast-float">
+                  <span className="text-6xl">📋</span>
+                </div>
+                <h3 className="text-2xl font-bold text-cryptocast-white mb-3">暂无进行中的活动</h3>
+                <p className="text-cryptocast-secondary mb-8 text-lg">开始您的第一个空投活动</p>
                 <button
-                  onClick={() => navigate('/history')}
-                  className="btn btn-ghost btn-sm gap-2 text-primary hover:text-primary"
+                  onClick={() => navigate('/campaign/create')}
+                  className="btn-cryptocast shadow-glow-purple text-lg px-8 py-4"
                 >
-                  查看全部
-                  <span>→</span>
+                  <span className="text-2xl">➕</span>
+                  创建第一个活动
                 </button>
               </div>
-
-              {activeCampaigns.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-base-100 flex items-center justify-center">
-                    <span className="text-5xl">📋</span>
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">暂无进行中的活动</h3>
-                  <p className="text-base-content/60 mb-6">开始您的第一个空投活动</p>
-                  <button
-                    onClick={() => navigate('/campaign/create')}
-                    className="btn btn-primary gap-2"
-                  >
-                    <span className="text-xl">➕</span>
-                    创建第一个活动
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {activeCampaigns.map((campaign) => (
-                    <div key={campaign.id} className="group bg-base-100 p-5 rounded-xl hover:shadow-lg transition-all duration-300 border border-base-content/5 hover:border-primary/30">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h3 className="font-bold text-xl mb-3 group-hover:text-primary transition-colors">{campaign.name}</h3>
-                          <div className="flex flex-wrap gap-3">
-                            <div className="badge badge-outline gap-2">
-                              <span>📍</span>
-                              {getChainName(campaign.chain)}
-                            </div>
-                            <div className="badge badge-outline gap-2">
-                              <span>👥</span>
-                              {campaign.totalRecipients.toLocaleString()} 地址
-                            </div>
-                            <div className="badge badge-outline gap-2">
-                              <span>📅</span>
-                              {new Date(campaign.createdAt).toLocaleDateString()}
-                            </div>
+            ) : (
+              <div className="space-y-6">
+                {activeCampaigns.map((campaign) => (
+                  <div key={campaign.id} className="card-cryptocast p-6 hover:shadow-glow-cyan transition-all">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-2xl mb-4 text-cryptocast-white hover:text-cryptocast-cyan transition-colors">{campaign.name}</h3>
+                        <div className="flex flex-wrap gap-3">
+                          <div className="glass px-4 py-2 rounded-xl flex items-center gap-2">
+                            <span className="text-lg">📍</span>
+                            <span className="text-sm font-medium text-cryptocast-secondary">{getChainName(campaign.chain)}</span>
                           </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-3">
-                          <span className={`badge badge-lg ${getStatusColor(campaign.status)} gap-2`}>
-                            {getStatusText(campaign.status)}
-                          </span>
-                          <button
-                            onClick={() => navigate(`/campaign/${campaign.id}`)}
-                            className="btn btn-sm btn-primary"
-                          >
-                            查看详情
-                          </button>
+                          <div className="glass px-4 py-2 rounded-xl flex items-center gap-2">
+                            <span className="text-lg">👥</span>
+                            <span className="text-sm font-medium text-cryptocast-secondary">{campaign.totalRecipients.toLocaleString()} 地址</span>
+                          </div>
+                          <div className="glass px-4 py-2 rounded-xl flex items-center gap-2">
+                            <span className="text-lg">📅</span>
+                            <span className="text-sm font-medium text-cryptocast-secondary">{new Date(campaign.createdAt).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
-
-                      {/* 进度条 */}
-                      {campaign.totalRecipients > 0 && (
-                        <div className="mt-4 p-4 bg-base-200/50 rounded-lg">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-base-content/70">发送进度</span>
-                            <span className="text-sm font-bold text-accent">
-                              {campaign.completedRecipients.toLocaleString()} / {campaign.totalRecipients.toLocaleString()}
-                              <span className="text-xs ml-2 text-base-content/60">
-                                ({campaign.totalRecipients > 0 ? Math.round((campaign.completedRecipients / campaign.totalRecipients) * 100) : 0}%)
-                              </span>
-                            </span>
-                          </div>
-                          <progress
-                            className="progress progress-accent w-full h-3"
-                            value={campaign.completedRecipients}
-                            max={campaign.totalRecipients}
-                          ></progress>
-                        </div>
-                      )}
+                      <div className="flex flex-col items-end gap-4">
+                        <span className={`glass px-4 py-2 rounded-xl font-bold text-sm ${getStatusColor(campaign.status)}`}>
+                          {getStatusText(campaign.status)}
+                        </span>
+                        <button
+                          onClick={() => navigate(`/campaign/${campaign.id}`)}
+                          className="btn-cryptocast text-sm px-6 py-3"
+                        >
+                          查看详情
+                        </button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+
+                    {/* Enhanced Progress Bar */}
+                    {campaign.totalRecipients > 0 && (
+                      <div className="mt-6 glass p-5 rounded-2xl">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-sm font-bold text-cryptocast-secondary">发送进度</span>
+                          <span className="text-sm font-bold text-cryptocast-cyan-bright">
+                            {campaign.completedRecipients.toLocaleString()} / {campaign.totalRecipients.toLocaleString()}
+                            <span className="text-xs ml-2 text-cryptocast-muted">
+                              ({campaign.totalRecipients > 0 ? Math.round((campaign.completedRecipients / campaign.totalRecipients) * 100) : 0}%)
+                            </span>
+                          </span>
+                        </div>
+                        <div className="h-4 bg-cryptocast-bg-tertiary rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-cryptocast-cyan to-cryptocast-cyan-bright rounded-full cryptocast-shimmer transition-all duration-1000"
+                            style={{width: `${campaign.totalRecipients > 0 ? (campaign.completedRecipients / campaign.totalRecipients) * 100 : 0}%`}}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* 最近活动列表 */}
-          <div className="card bg-base-300 shadow-xl border border-base-content/5">
-            <div className="card-body">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
-                    <span className="text-xl">📋</span>
-                  </div>
-                  <h2 className="text-2xl font-bold">最近活动</h2>
+          {/* Enhanced Recent Campaigns List */}
+          <div className="card-cryptocast p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-cryptocast-gradient-accent flex items-center justify-center cryptocast-glow">
+                  <span className="text-2xl">📋</span>
                 </div>
-                <button
-                  onClick={() => navigate('/history')}
-                  className="btn btn-ghost btn-sm gap-2 text-primary hover:text-primary"
-                >
-                  查看全部
-                  <span>→</span>
-                </button>
+                <h2 className="text-2xl font-bold text-cryptocast-white">最近活动</h2>
               </div>
-
-              {campaigns.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-base-100 flex items-center justify-center">
-                    <span className="text-5xl">🔍</span>
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">暂无活动记录</h3>
-                  <p className="text-base-content/60">创建活动后将在此处显示</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="table table-zebra w-full">
-                    <thead>
-                      <tr className="border-b border-base-content/10">
-                        <th className="bg-transparent text-base-content/80 font-semibold">活动名称</th>
-                        <th className="bg-transparent text-base-content/80 font-semibold">状态</th>
-                        <th className="bg-transparent text-base-content/80 font-semibold">区块链</th>
-                        <th className="bg-transparent text-base-content/80 font-semibold">进度</th>
-                        <th className="bg-transparent text-base-content/80 font-semibold">创建时间</th>
-                        <th className="bg-transparent text-base-content/80 font-semibold">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {campaigns.slice(0, 5).map((campaign) => (
-                        <tr key={campaign.id} className="hover:bg-base-100/50 transition-colors">
-                          <td>
-                            <div className="font-semibold text-base-content">{campaign.name}</div>
-                          </td>
-                          <td>
-                            <span className={`badge ${getStatusColor(campaign.status)}`}>
-                              {getStatusText(campaign.status)}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="badge badge-outline">{getChainName(campaign.chain)}</div>
-                          </td>
-                          <td className="text-base-content/80">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-sm">{campaign.completedRecipients}/{campaign.totalRecipients}</span>
-                              <progress
-                                className="progress progress-accent w-20 h-1"
-                                value={campaign.completedRecipients}
-                                max={campaign.totalRecipients || 1}
-                              ></progress>
-                            </div>
-                          </td>
-                          <td className="text-base-content/70 text-sm">
-                            {new Date(campaign.createdAt).toLocaleDateString()}
-                          </td>
-                          <td>
-                            <button
-                              onClick={() => navigate(`/campaign/${campaign.id}`)}
-                              className="btn btn-ghost btn-xs text-primary hover:text-primary"
-                            >
-                              详情
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <button
+                onClick={() => navigate('/history')}
+                className="glass px-4 py-2 rounded-xl text-cryptocast-purple hover:text-cryptocast-white hover:bg-cryptocast-purple/20 transition-cryptocast flex items-center gap-2 text-sm font-medium"
+              >
+                查看全部
+                <span className="text-lg">→</span>
+              </button>
             </div>
+
+            {campaigns.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full glass flex items-center justify-center cryptocast-float">
+                  <span className="text-5xl">🔍</span>
+                </div>
+                <h3 className="text-xl font-bold text-cryptocast-white mb-2">暂无活动记录</h3>
+                <p className="text-cryptocast-secondary">创建活动后将在此处显示</p>
+              </div>
+            ) : (
+              <div className="space-y-4 scrollbar-cryptocast max-h-96 overflow-y-auto">
+                {campaigns.slice(0, 5).map((campaign) => (
+                  <div key={campaign.id} className="glass p-4 rounded-xl hover:bg-cryptocast-bg-card-hover transition-cryptocast">
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <div className="font-bold text-cryptocast-white mb-2">{campaign.name}</div>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <span className={`glass px-3 py-1 rounded-lg text-xs font-medium ${getStatusColor(campaign.status)}`}>
+                            {getStatusText(campaign.status)}
+                          </span>
+                          <span className="glass px-3 py-1 rounded-lg text-xs text-cryptocast-secondary">
+                            {getChainName(campaign.chain)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-right mb-2">
+                          <div className="text-xs text-cryptocast-muted">进度</div>
+                          <div className="text-sm font-bold text-cryptocast-cyan">
+                            {campaign.completedRecipients}/{campaign.totalRecipients}
+                          </div>
+                        </div>
+                        <div className="h-2 w-20 bg-cryptocast-bg-tertiary rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-cryptocast-gradient rounded-full cryptocast-shimmer"
+                            style={{width: `${campaign.totalRecipients > 0 ? (campaign.completedRecipients / campaign.totalRecipients) * 100 : 0}%`}}
+                          ></div>
+                        </div>
+                        <div className="text-xs text-cryptocast-muted">
+                          {new Date(campaign.createdAt).toLocaleDateString()}
+                        </div>
+                        <button
+                          onClick={() => navigate(`/campaign/${campaign.id}`)}
+                          className="text-cryptocast-purple hover:text-cryptocast-cyan text-sm font-medium transition-colors"
+                        >
+                          详情 →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 右侧：快速操作 */}
+        {/* Enhanced Right Sidebar: Quick Actions */}
         <div className="space-y-6">
-          <div className="card bg-base-300 shadow-xl border border-base-content/5">
-            <div className="card-body">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-                  <span className="text-xl">⚡</span>
+          <div className="card-cryptocast p-6">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-cryptocast-gradient-accent flex items-center justify-center cryptocast-glow-cyan">
+                <span className="text-2xl">⚡</span>
+              </div>
+              <h2 className="text-2xl font-bold text-cryptocast-white">快速操作</h2>
+            </div>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => navigate('/campaign/create')}
+                className="btn-cryptocast w-full justify-start gap-4 h-auto py-5 hover:shadow-glow-purple group"
+              >
+                <div className="w-12 h-12 rounded-xl glass flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="text-2xl">➕</span>
                 </div>
-                <h2 className="text-2xl font-bold">快速操作</h2>
-              </div>
+                <div className="text-left flex-1">
+                  <div className="font-bold text-cryptocast-white text-lg mb-1">创建新活动</div>
+                  <div className="text-sm text-cryptocast-secondary">部署智能合约发起空投</div>
+                </div>
+              </button>
 
-              <div className="space-y-3">
-                <button
-                  onClick={() => navigate('/campaign/create')}
-                  className="btn btn-primary w-full justify-start gap-3 h-auto py-4 hover:scale-105 transition-transform"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-primary-content/20 flex items-center justify-center">
-                    <span className="text-2xl">➕</span>
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="font-bold text-base">创建新活动</div>
-                    <div className="text-xs opacity-70">部署智能合约发起空投</div>
-                  </div>
-                </button>
+              <button
+                onClick={() => navigate('/history')}
+                className="glass w-full justify-start gap-4 h-auto py-5 hover:bg-cryptocast-bg-card-hover group transition-cryptocast border border-cryptocast-glass-border rounded-xl"
+              >
+                <div className="w-12 h-12 rounded-xl glass flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="text-2xl">📜</span>
+                </div>
+                <div className="text-left flex-1">
+                  <div className="font-bold text-cryptocast-white text-lg mb-1">查看历史</div>
+                  <div className="text-sm text-cryptocast-secondary">浏览所有活动记录</div>
+                </div>
+              </button>
 
-                <button
-                  onClick={() => navigate('/history')}
-                  className="btn btn-outline w-full justify-start gap-3 h-auto py-4 hover:scale-105 transition-transform"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-base-100 flex items-center justify-center">
-                    <span className="text-2xl">📜</span>
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="font-bold text-base">查看历史</div>
-                    <div className="text-xs opacity-70">浏览所有活动记录</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => navigate('/settings')}
-                  className="btn btn-outline w-full justify-start gap-3 h-auto py-4 hover:scale-105 transition-transform"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-base-100 flex items-center justify-center">
-                    <span className="text-2xl">⚙️</span>
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="font-bold text-base">系统设置</div>
-                    <div className="text-xs opacity-70">管理网络和钱包</div>
-                  </div>
-                </button>
-              </div>
+              <button
+                onClick={() => navigate('/settings')}
+                className="glass w-full justify-start gap-4 h-auto py-5 hover:bg-cryptocast-bg-card-hover group transition-cryptocast border border-cryptocast-glass-border rounded-xl"
+              >
+                <div className="w-12 h-12 rounded-xl glass flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="text-2xl">⚙️</span>
+                </div>
+                <div className="text-left flex-1">
+                  <div className="font-bold text-cryptocast-white text-lg mb-1">系统设置</div>
+                  <div className="text-sm text-cryptocast-secondary">管理网络和钱包</div>
+                </div>
+              </button>
             </div>
           </div>
 
-          {/* 帮助和资源 */}
-          <div className="card bg-gradient-to-br from-info/10 to-info/5 shadow-xl border border-info/20">
-            <div className="card-body">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-info/20 flex items-center justify-center">
-                  <span className="text-xl">💡</span>
-                </div>
-                <h3 className="font-bold text-lg">需要帮助？</h3>
+          {/* Enhanced Help and Resources */}
+          <div className="card-cryptocast p-6 cryptocast-glow-cyan">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-2xl glass flex items-center justify-center cryptocast-float">
+                <span className="text-2xl">💡</span>
               </div>
-              <p className="text-sm text-base-content/70 mb-4">
-                查看使用指南，了解如何高效管理您的加密货币空投活动。
-              </p>
-              <div className="space-y-2">
-                <a href="#" className="btn btn-sm btn-ghost w-full justify-start gap-2">
-                  <span>📖</span>
-                  <span>使用文档</span>
-                </a>
-                <a href="#" className="btn btn-sm btn-ghost w-full justify-start gap-2">
-                  <span>🎥</span>
-                  <span>视频教程</span>
-                </a>
-                <a href="#" className="btn btn-sm btn-ghost w-full justify-start gap-2">
-                  <span>💬</span>
-                  <span>联系支持</span>
-                </a>
-              </div>
+              <h3 className="font-bold text-xl text-cryptocast-white">需要帮助？</h3>
+            </div>
+            <p className="text-sm text-cryptocast-secondary mb-6 leading-relaxed">
+              查看使用指南，了解如何高效管理您的加密货币空投活动。
+            </p>
+            <div className="space-y-3">
+              <a href="#" className="glass w-full justify-start gap-3 px-4 py-3 rounded-xl hover:bg-cryptocast-bg-card-hover transition-cryptocast flex items-center text-cryptocast-white group">
+                <span className="text-lg group-hover:scale-110 transition-transform">📖</span>
+                <span className="font-medium">使用文档</span>
+              </a>
+              <a href="#" className="glass w-full justify-start gap-3 px-4 py-3 rounded-xl hover:bg-cryptocast-bg-card-hover transition-cryptocast flex items-center text-cryptocast-white group">
+                <span className="text-lg group-hover:scale-110 transition-transform">🎥</span>
+                <span className="font-medium">视频教程</span>
+              </a>
+              <a href="#" className="glass w-full justify-start gap-3 px-4 py-3 rounded-xl hover:bg-cryptocast-bg-card-hover transition-cryptocast flex items-center text-cryptocast-white group">
+                <span className="text-lg group-hover:scale-110 transition-transform">💬</span>
+                <span className="font-medium">联系支持</span>
+              </a>
             </div>
           </div>
         </div>

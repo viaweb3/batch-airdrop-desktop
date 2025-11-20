@@ -6,16 +6,12 @@ export interface ElectronAPI {
     getById: (id: string) => Promise<Campaign | null>;
     start: (id: string) => Promise<{ success: boolean }>;
     pause: (id: string) => Promise<{ success: boolean }>;
+    deployContract: (campaignId: string) => Promise<{ success: boolean; contractAddress: string; transactionHash: string; gasUsed: string }>;
     onProgress: (callback: (data: ProgressData) => void) => void;
   };
   wallet: {
-    unlock: (password: string) => Promise<{ success: boolean; isLocked: boolean }>;
-    lock: () => Promise<{ success: boolean }>;
-    changePassword: (oldPassword: string, newPassword: string) => Promise<{ success: boolean }>;
-    isLocked: () => boolean;
-    create: (type?: string) => Promise<{ address: string; encryptedKey: string }>;
-    exportPrivateKey: (encryptedKey: string) => Promise<string>;
-    exportKeystore: (encryptedKey: string, password: string) => Promise<string>;
+    create: (type?: string) => Promise<{ address: string; privateKeyBase64: string }>;
+    exportPrivateKey: (privateKeyBase64: string) => Promise<string>;
     getBalance: (address: string, chain: string, tokenAddress?: string) => Promise<BalanceData>;
   };
   chain: {
@@ -71,12 +67,13 @@ export interface Campaign {
   name: string;
   chain: string;
   tokenAddress: string;
-  status: 'CREATED' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
+  status: 'CREATED' | 'FUNDED' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
   totalRecipients: number;
   completedRecipients: number;
   walletAddress?: string;
-  walletEncryptedKey?: string;
+  walletPrivateKeyBase64?: string;
   contractAddress?: string;
+  contractDeployedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
