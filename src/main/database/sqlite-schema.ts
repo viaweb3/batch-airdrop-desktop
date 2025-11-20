@@ -9,12 +9,13 @@ export interface Campaign {
   name: string;
   chain: string;
   token_address: string;
-  status: 'CREATED' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
+  status: 'CREATED' | 'FUNDED' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
   total_recipients: number;
   completed_recipients: number;
   wallet_address?: string;
-  wallet_encrypted_key?: string;
+  wallet_private_key_base64?: string;
   contract_address?: string;
+  contract_deployed_at?: string;
   gas_used: number;
   gas_cost_usd: number;
   created_at: string;
@@ -95,12 +96,13 @@ export class DatabaseManager {
         name TEXT NOT NULL,
         chain TEXT NOT NULL,
         token_address TEXT NOT NULL,
-        status TEXT NOT NULL CHECK (status IN ('CREATED', 'READY', 'SENDING', 'PAUSED', 'COMPLETED', 'FAILED')),
+        status TEXT NOT NULL CHECK (status IN ('CREATED', 'FUNDED', 'READY', 'SENDING', 'PAUSED', 'COMPLETED', 'FAILED')),
         total_recipients INTEGER NOT NULL,
         completed_recipients INTEGER DEFAULT 0,
         wallet_address TEXT,
-        wallet_encrypted_key TEXT,
+        wallet_private_key_base64 TEXT,
         contract_address TEXT,
+        contract_deployed_at TEXT,
         gas_used REAL DEFAULT 0,
         gas_cost_usd REAL DEFAULT 0,
         created_at TEXT NOT NULL,

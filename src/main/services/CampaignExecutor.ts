@@ -67,14 +67,11 @@ export class CampaignExecutor {
         throw new Error('Campaign must be in READY or PAUSED status to execute');
       }
 
-      // Unlock wallet with password
-      const unlocked = await this.walletService.unlockWithPassword(password);
-      if (!unlocked) {
-        throw new Error('Invalid password');
+      // Decode private key from base64
+      if (!campaign.walletPrivateKeyBase64) {
+        throw new Error('Campaign wallet private key missing');
       }
-
-      // Decrypt wallet private key
-      const privateKey = this.walletService.decryptWalletKey(campaign.walletEncryptedKey);
+      const privateKey = this.walletService.exportPrivateKey(campaign.walletPrivateKeyBase64);
       const wallet = { privateKey };
 
       // Get pending recipients

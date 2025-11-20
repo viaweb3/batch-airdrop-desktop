@@ -18,12 +18,13 @@ export interface Campaign {
   name: string;
   chain: string;
   tokenAddress: string;
-  status: 'CREATED' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
+  status: 'CREATED' | 'FUNDED' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
   totalRecipients: number;
   completedRecipients: number;
   walletAddress?: string;
-  walletEncryptedKey?: string;
+  walletPrivateKeyBase64?: string;
   contractAddress?: string;
+  contractDeployedAt?: string;
   gasUsed: number;
   gasCostUsd: number;
   createdAt: string;
@@ -35,6 +36,7 @@ export class CampaignService {
   private walletService: WalletService;
   private executor: CampaignExecutor;
   private databaseManager: DatabaseManager;
+  private deploymentLocks: Map<string, Promise<any>> = new Map();
 
   constructor(databaseManager: DatabaseManager) {
     this.db = databaseManager.getDatabase();
@@ -54,7 +56,7 @@ export class CampaignService {
       const insertCampaign = this.db.prepare(`
         INSERT INTO campaigns (
           id, name, chain, token_address, status, total_recipients,
-          wallet_address, wallet_encrypted_key, created_at, updated_at
+          wallet_address, wallet_private_key_base64, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
@@ -66,7 +68,7 @@ export class CampaignService {
         'CREATED',
         data.recipients.length,
         wallet.address,
-        wallet.encryptedKey,
+        wallet.privateKeyBase64,
         now,
         now
       );
@@ -167,8 +169,9 @@ export class CampaignService {
       totalRecipients: row.total_recipients,
       completedRecipients: row.completed_recipients,
       walletAddress: row.wallet_address,
-      walletEncryptedKey: row.wallet_encrypted_key,
+      walletPrivateKeyBase64: row.wallet_private_key_base64,
       contractAddress: row.contract_address,
+      contractDeployedAt: row.contract_deployed_at,
       gasUsed: row.gas_used || 0,
       gasCostUsd: row.gas_cost_usd || 0,
       createdAt: row.created_at,
@@ -202,8 +205,8 @@ export class CampaignService {
         throw new Error('Campaign not found');
       }
 
-      if (campaign.status !== 'CREATED' && campaign.status !== 'READY' && campaign.status !== 'PAUSED') {
-        throw new Error('Campaign is not ready to start');
+      if (campaign.status !== 'READY' && campaign.status !== 'PAUSED') {
+        throw new Error('Campaign is not ready to start. Please deploy the contract first.');
       }
 
       this.addAuditLog('CAMPAIGN_STARTED', `Campaign ${id} execution started`);
@@ -253,6 +256,78 @@ export class CampaignService {
     } catch (error) {
       console.error('Failed to update campaign progress:', error);
       throw new Error('Campaign progress update failed');
+    }
+  }
+
+  async updateCampaignContract(
+    id: string,
+    contractAddress: string,
+    deploymentTxHash: string
+  ): Promise<void> {
+    try {
+      const campaign = await this.getCampaignById(id);
+      if (!campaign) {
+        throw new Error('Campaign not found');
+      }
+
+      // 验证状态转换合法性
+      const validTransitions = ['CREATED', 'FUNDED'];
+      if (!validTransitions.includes(campaign.status)) {
+        throw new Error(
+          `Cannot deploy contract from status ${campaign.status}. ` +
+          `Valid states: ${validTransitions.join(', ')}`
+        );
+      }
+
+      // 检查是否已经部署过
+      if (campaign.contractAddress) {
+        throw new Error(
+          `Contract already deployed at ${campaign.contractAddress}. ` +
+          `Cannot deploy again.`
+        );
+      }
+
+      const now = new Date().toISOString();
+      const result = this.db.prepare(`
+        UPDATE campaigns
+        SET contract_address = ?, contract_deployed_at = ?, status = 'READY', updated_at = ?
+        WHERE id = ? AND status IN ('CREATED', 'FUNDED') AND contract_address IS NULL
+      `).run(contractAddress, now, now, id);
+
+      // 验证更新成功（防止并发部署）
+      if (result.changes === 0) {
+        throw new Error('Campaign status changed during deployment or already deployed, please retry');
+      }
+
+      this.addAuditLog(
+        'CONTRACT_DEPLOYED',
+        `Contract deployed for campaign ${id}: ${contractAddress} (tx: ${deploymentTxHash})`
+      );
+    } catch (error) {
+      console.error('Failed to update campaign contract:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 部署合约（带幂等性保护）
+   */
+  async deployContractWithLock(campaignId: string, deployFn: () => Promise<any>): Promise<any> {
+    // 检查是否正在部署
+    if (this.deploymentLocks.has(campaignId)) {
+      throw new Error('Contract deployment already in progress for this campaign');
+    }
+
+    // 创建部署Promise
+    const deployPromise = deployFn();
+    this.deploymentLocks.set(campaignId, deployPromise);
+
+    try {
+      const result = await deployPromise;
+      return result;
+    } finally {
+      // 清理锁
+      this.deploymentLocks.delete(campaignId);
     }
   }
 

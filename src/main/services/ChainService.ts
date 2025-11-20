@@ -399,6 +399,10 @@ export class ChainService {
     }
   }
 
+  async getEVMChainById(chainId: number): Promise<EVMChain | null> {
+    return this.getChainByChainId(chainId);
+  }
+
   async toggleEVMChain(chainId: number, enabled: boolean): Promise<void> {
     try {
       this.db.prepare('UPDATE evm_chains SET enabled = ? WHERE id = ?').run(enabled ? 1 : 0, chainId);

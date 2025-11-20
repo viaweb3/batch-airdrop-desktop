@@ -117,46 +117,10 @@ export async function setupIPCHandlers() {
     }
   });
 
-  // 钱包相关
-  ipcMain.handle('wallet:unlock', async (_event, password) => {
-    try {
-      console.log('解锁钱包');
-      const success = await walletService.unlockWithPassword(password);
-      return { success, isLocked: walletService.isLocked() };
-    } catch (error) {
-      console.error('解锁钱包失败:', error);
-      throw new Error(`解锁钱包失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    }
-  });
-
-  ipcMain.handle('wallet:lock', async (_event) => {
-    try {
-      console.log('锁定钱包');
-      walletService.lock();
-      return { success: true };
-    } catch (error) {
-      console.error('锁定钱包失败:', error);
-      throw new Error(`锁定钱包失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    }
-  });
-
-  ipcMain.handle('wallet:changePassword', async (_event, oldPassword, newPassword) => {
-    try {
-      console.log('更改密码');
-      const success = walletService.changePassword(oldPassword, newPassword);
-      return { success };
-    } catch (error) {
-      console.error('更改密码失败:', error);
-      throw new Error(`更改密码失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    }
-  });
-
+  // 钱包相关（简化版 - 无密码保护）
   ipcMain.handle('wallet:create', async (_event, type = 'evm') => {
     try {
       console.log('创建钱包:', type);
-      if (walletService.isLocked()) {
-        throw new Error('Wallet is locked. Please unlock first.');
-      }
       const wallet = type === 'solana'
         ? walletService.createSolanaWallet()
         : walletService.createEVMWallet();
@@ -167,31 +131,14 @@ export async function setupIPCHandlers() {
     }
   });
 
-  ipcMain.handle('wallet:exportPrivateKey', async (_event, encryptedKey) => {
+  ipcMain.handle('wallet:exportPrivateKey', async (_event, privateKeyBase64) => {
     try {
       console.log('导出私钥');
-      if (walletService.isLocked()) {
-        throw new Error('Wallet is locked. Please unlock first.');
-      }
-      const privateKey = walletService.exportPrivateKey(encryptedKey);
+      const privateKey = walletService.exportPrivateKey(privateKeyBase64);
       return privateKey;
     } catch (error) {
       console.error('导出私钥失败:', error);
       throw new Error(`导出私钥失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    }
-  });
-
-  ipcMain.handle('wallet:exportKeystore', async (_event, encryptedKey, password) => {
-    try {
-      console.log('导出Keystore');
-      if (walletService.isLocked()) {
-        throw new Error('Wallet is locked. Please unlock first.');
-      }
-      const keystore = walletService.exportKeystore(encryptedKey, password);
-      return keystore;
-    } catch (error) {
-      console.error('导出Keystore失败:', error);
-      throw new Error(`导出Keystore失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   });
 
@@ -493,6 +440,62 @@ export async function setupIPCHandlers() {
       console.error('部署合约失败:', error);
       throw new Error(`部署合约失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
+  });
+
+  // 为活动部署合约（使用活动专用地址 + 幂等性保护）
+  ipcMain.handle('campaign:deployContract', async (_event, campaignId) => {
+    // 使用幂等性锁保护
+    return campaignService.deployContractWithLock(campaignId, async () => {
+      try {
+        console.log('为活动部署合约:', campaignId);
+
+        // 1. 获取活动信息
+        const campaign = await campaignService.getCampaignById(campaignId);
+        if (!campaign) {
+          throw new Error('活动不存在');
+        }
+
+        if (!campaign.walletPrivateKeyBase64) {
+          throw new Error('活动钱包信息缺失');
+        }
+
+        // 2. 解码私钥
+        const privateKey = walletService.exportPrivateKey(campaign.walletPrivateKeyBase64);
+
+        // 3. 获取链配置
+        const chain = await chainService.getEVMChainById(parseInt(campaign.chain));
+        if (!chain) {
+          throw new Error('链配置不存在');
+        }
+
+        // 4. 部署合约
+        const config = {
+          tokenAddress: campaign.tokenAddress,
+          chainId: parseInt(campaign.chain),
+          rpcUrl: chain.rpcUrl,
+          deployerPrivateKey: privateKey
+        };
+
+        const contractInfo = await contractService.deployContract(config);
+
+        // 5. 更新活动信息（包含状态验证）
+        await campaignService.updateCampaignContract(
+          campaignId,
+          contractInfo.contractAddress,
+          contractInfo.transactionHash
+        );
+
+        return {
+          success: true,
+          contractAddress: contractInfo.contractAddress,
+          transactionHash: contractInfo.transactionHash,
+          gasUsed: contractInfo.gasUsed
+        };
+      } catch (error) {
+        console.error('为活动部署合约失败:', error);
+        throw new Error(`为活动部署合约失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      }
+    });
   });
 
   // Token approval - 授权代币给合约使用
