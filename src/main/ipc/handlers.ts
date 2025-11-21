@@ -8,6 +8,7 @@ import { ChainService } from '../services/ChainService';
 import { FileService } from '../services/FileService';
 import { PriceService } from '../services/PriceService';
 import { ContractService } from '../services/ContractService';
+import { CampaignEstimator } from '../services/CampaignEstimator';
 
 let databaseManager: DatabaseManager;
 let campaignService: CampaignService;
@@ -18,6 +19,7 @@ let chainService: ChainService;
 let fileService: FileService;
 let priceService: PriceService;
 let contractService: ContractService;
+let campaignEstimator: CampaignEstimator;
 
 export async function setupIPCHandlers() {
   // 初始化服务
@@ -51,6 +53,9 @@ export async function setupIPCHandlers() {
     
     console.log('Initializing contract service...');
     contractService = new ContractService();
+
+    console.log('Initializing campaign estimator...');
+    campaignEstimator = new CampaignEstimator(databaseManager);
 
     console.log('All services initialized successfully');
   } catch (error) {
@@ -170,6 +175,17 @@ export async function setupIPCHandlers() {
     } catch (error) {
       console.error('获取活动接收者列表失败:', error);
       throw new Error(`获取活动接收者列表失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  });
+
+  ipcMain.handle('campaign:estimate', async (_event, request) => {
+    try {
+      console.log('估算活动成本:', request);
+      const estimate = await campaignEstimator.estimate(request);
+      return estimate;
+    } catch (error) {
+      console.error('估算活动成本失败:', error);
+      throw new Error(`估算活动成本失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   });
 

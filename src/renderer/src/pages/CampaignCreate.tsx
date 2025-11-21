@@ -28,6 +28,8 @@ export default function CampaignCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [tokenAddressError, setTokenAddressError] = useState<string>('');
+  const [estimation, setEstimation] = useState<any>(null);
+  const [isEstimating, setIsEstimating] = useState(false);
 
   const availableChains = [
     { id: '1', name: 'Ethereum', symbol: 'ETH' },
@@ -230,6 +232,33 @@ export default function CampaignCreate() {
       alert(`创建失败: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEstimate = async () => {
+    if (!formData.chain || !formData.tokenAddress || !csvValidation?.isValid) {
+      alert('请先填写完整的表单信息并确保CSV数据有效');
+      return;
+    }
+
+    setIsEstimating(true);
+    try {
+      const estimateRequest = {
+        chain: formData.chain,
+        tokenAddress: formData.tokenAddress,
+        recipientCount: csvValidation.validRecords,
+        batchSize: formData.batchSize,
+      };
+
+      if (window.electronAPI?.campaign) {
+        const result = await window.electronAPI.campaign.estimate(estimateRequest);
+        setEstimation(result);
+      }
+    } catch (error) {
+      console.error('Failed to estimate campaign:', error);
+      alert(`估算失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setIsEstimating(false);
     }
   };
 
@@ -521,6 +550,89 @@ export default function CampaignCreate() {
             </div>
           </div>
         </div>
+
+        {/* Campaign Estimation */}
+        {csvValidation?.isValid && (
+          <div className="bg-base-100 shadow-sm rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">💰</span>
+                <h2 className="text-lg font-semibold">活动成本估算</h2>
+              </div>
+              <button
+                type="button"
+                onClick={handleEstimate}
+                disabled={isEstimating || !formData.chain || !formData.tokenAddress}
+                className="btn btn-sm btn-primary"
+              >
+                {isEstimating ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs"></span>
+                    估算中...
+                  </>
+                ) : (
+                  '开始估算'
+                )}
+              </button>
+            </div>
+
+            {estimation ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="stat bg-base-200 rounded-lg p-4">
+                    <div className="stat-title text-xs">总接收者</div>
+                    <div className="stat-value text-2xl">{estimation.totalRecipients}</div>
+                    <div className="stat-desc">{estimation.estimatedBatches} 批次</div>
+                  </div>
+
+                  <div className="stat bg-base-200 rounded-lg p-4">
+                    <div className="stat-title text-xs">Gas 成本 (ETH)</div>
+                    <div className="stat-value text-2xl">{estimation.estimatedGasCostETH}</div>
+                    <div className="stat-desc">约 ${estimation.estimatedGasCostUSD}</div>
+                  </div>
+
+                  <div className="stat bg-base-200 rounded-lg p-4">
+                    <div className="stat-title text-xs">Gas 价格</div>
+                    <div className="stat-value text-2xl">{estimation.gasPrice}</div>
+                    <div className="stat-desc">Gwei</div>
+                  </div>
+
+                  <div className="stat bg-base-200 rounded-lg p-4">
+                    <div className="stat-title text-xs">预计耗时</div>
+                    <div className="stat-value text-2xl">{estimation.estimatedDuration}</div>
+                    <div className="stat-desc">分钟</div>
+                  </div>
+                </div>
+
+                <div className="alert alert-info">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <div className="text-sm">
+                    <div className="font-bold">建议</div>
+                    <div>最优批次大小: {estimation.recommendations.optimalBatchSize} 地址/批次</div>
+                    <div>每批耗时: {estimation.recommendations.estimatedTimePerBatch} 秒</div>
+                    <div>总预计时间: {estimation.recommendations.totalEstimatedTime} 分钟</div>
+                  </div>
+                </div>
+
+                <div className="alert alert-warning">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <div className="text-sm">
+                    <div className="font-bold">重要提醒</div>
+                    <div>以上估算仅供参考，实际Gas费用可能因网络状况而有所不同</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-base-content/60">
+                <p>点击"开始估算"按钮获取活动成本预估</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Submit Buttons */}
         <div className="flex justify-end gap-4">

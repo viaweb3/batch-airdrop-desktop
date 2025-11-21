@@ -19,19 +19,25 @@ export interface CampaignData {
 export interface Campaign {
   id: string;
   name: string;
+  description?: string;
   chain: string;
   tokenAddress: string;
+  tokenSymbol?: string;
   status: 'CREATED' | 'FUNDED' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
   totalRecipients: number;
   completedRecipients: number;
+  failedRecipients?: number;
   walletAddress?: string;
   walletPrivateKeyBase64?: string;
   contractAddress?: string;
   contractDeployedAt?: string;
+  batchSize?: number;
+  sendInterval?: number;
   gasUsed: number;
   gasCostUsd: number;
   createdAt: string;
   updatedAt: string;
+  completedAt?: string;
 }
 
 export class CampaignService {

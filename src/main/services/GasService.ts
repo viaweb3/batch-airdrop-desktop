@@ -208,6 +208,30 @@ export class GasService {
   }
 
   /**
+   * Get gas price for a specific network (simplified version)
+   */
+  async getGasPrice(chainId: string): Promise<string> {
+    try {
+      // For now, use fallback gas prices
+      // In a real implementation, you would use RPC to get real-time gas price
+      const fallbackGasPrices: Record<string, number> = {
+        '1': 30,      // Ethereum
+        '137': 30,    // Polygon
+        '42161': 0.5, // Arbitrum
+        '10': 0.5,    // Optimism
+        '8453': 0.5,  // Base
+        '56': 5,      // BSC
+      };
+
+      const gasPrice = fallbackGasPrices[chainId] || 20;
+      return (gasPrice * this.GAS_MULTIPLIER).toFixed(2);
+    } catch (error) {
+      console.error('Failed to get gas price:', error);
+      return '20.0';
+    }
+  }
+
+  /**
    * Get transaction options with proper gas settings
    */
   getTransactionOptions(gasInfo: GasInfo): any {

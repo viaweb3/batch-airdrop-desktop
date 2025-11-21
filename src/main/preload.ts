@@ -9,6 +9,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getById: (id: string) => ipcRenderer.invoke('campaign:getById', id),
     start: (id: string) => ipcRenderer.invoke('campaign:start', id),
     pause: (id: string) => ipcRenderer.invoke('campaign:pause', id),
+    resume: (id: string) => ipcRenderer.invoke('campaign:resume', id),
+    cancel: (id: string) => ipcRenderer.invoke('campaign:cancel', id),
+    getDetails: (id: string) => ipcRenderer.invoke('campaign:getDetails', id),
+    getTransactions: (id: string, options?: any) => ipcRenderer.invoke('campaign:getTransactions', id, options),
+    getRecipients: (id: string) => ipcRenderer.invoke('campaign:getRecipients', id),
+    estimate: (request: any) => ipcRenderer.invoke('campaign:estimate', request),
     onProgress: (callback: any) => {
       ipcRenderer.on('campaign:progress', (_event, data) => callback(data));
     },
@@ -28,6 +34,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('wallet:exportKeystore', encryptedKey, password),
     getBalance: (address: string, chain: string, tokenAddress?: string) =>
       ipcRenderer.invoke('wallet:getBalance', address, chain, tokenAddress),
+    list: (options?: any) => ipcRenderer.invoke('wallet:list', options),
+    getBalances: (campaignId: string) => ipcRenderer.invoke('wallet:getBalances', campaignId),
   },
 
   // 链管理
