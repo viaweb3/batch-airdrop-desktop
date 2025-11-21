@@ -84,9 +84,7 @@ export class CampaignService {
         insertRecipient.run(id, recipient.address, recipient.amount, now, now);
       });
 
-      // 记录审计日志
-      this.addAuditLog('CAMPAIGN_CREATED', `Campaign ${id} created with ${data.recipients.length} recipients`);
-
+      
       const campaign = await this.getCampaignById(id);
       if (!campaign) {
         throw new Error('Campaign creation failed - campaign not found');
@@ -185,8 +183,6 @@ export class CampaignService {
       this.db.prepare(
         'UPDATE campaigns SET status = ?, updated_at = ? WHERE id = ?'
       ).run(status, now, id);
-
-      this.addAuditLog('CAMPAIGN_STATUS_UPDATED', `Campaign ${id} status changed to ${status}`);
     } catch (error) {
       console.error('Failed to update campaign status:', error);
       throw new Error('Campaign status update failed');
@@ -209,12 +205,10 @@ export class CampaignService {
         throw new Error('Campaign is not ready to start. Please deploy the contract first.');
       }
 
-      this.addAuditLog('CAMPAIGN_STARTED', `Campaign ${id} execution started`);
-
+      
       // Execute campaign in background (non-blocking)
       this.executor.executeCampaign(id, password, batchSize, onProgress).catch(error => {
         console.error('Campaign execution error:', error);
-        this.addAuditLog('CAMPAIGN_ERROR', `Campaign ${id} execution error: ${error.message}`);
       });
 
       return { success: true };
@@ -238,8 +232,7 @@ export class CampaignService {
       // Request executor to pause
       this.executor.pauseExecution(id);
 
-      this.addAuditLog('CAMPAIGN_PAUSE_REQUESTED', `Campaign ${id} pause requested`);
-
+      
       return { success: true };
     } catch (error) {
       console.error('Failed to pause campaign:', error);
@@ -298,11 +291,6 @@ export class CampaignService {
       if (result.changes === 0) {
         throw new Error('Campaign status changed during deployment or already deployed, please retry');
       }
-
-      this.addAuditLog(
-        'CONTRACT_DEPLOYED',
-        `Contract deployed for campaign ${id}: ${contractAddress} (tx: ${deploymentTxHash})`
-      );
     } catch (error) {
       console.error('Failed to update campaign contract:', error);
       throw error;
@@ -408,44 +396,9 @@ export class CampaignService {
       });
 
       transaction();
-
-      this.addAuditLog('CAMPAIGN_DELETED', `Campaign ${id} deleted`);
     } catch (error) {
       console.error('Failed to delete campaign:', error);
       throw new Error('Campaign deletion failed');
-    }
-  }
-
-  private addAuditLog(action: string, details: string): void {
-    try {
-      this.db.prepare(`
-        INSERT INTO audit_logs (action, details, created_at) VALUES (?, ?, ?)
-      `).run(action, details, new Date().toISOString());
-    } catch (error) {
-      console.error('Failed to add audit log:', error);
-    }
-  }
-
-  async getAuditLogs(limit = 100): Promise<Array<{
-    id: number;
-    action: string;
-    details: string;
-    createdAt: string;
-  }>> {
-    try {
-      const logs = this.db.prepare(`
-        SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT ?
-      `).all(limit) as any[];
-
-      return logs.map(row => ({
-        id: row.id,
-        action: row.action,
-        details: row.details,
-        createdAt: row.created_at,
-      }));
-    } catch (error) {
-      console.error('Failed to get audit logs:', error);
-      throw new Error('Audit logs retrieval failed');
     }
   }
 }

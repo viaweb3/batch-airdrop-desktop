@@ -26,10 +26,6 @@ export interface ElectronAPI {
     updateSolanaRPCPriority: (id: number, priority: number) => Promise<void>;
     deleteSolanaRPC: (id: number) => Promise<void>;
       };
-  settings: {
-    get: () => Promise<any>;
-    update: (settings: any) => Promise<{ success: boolean }>;
-  };
   file: {
     readCSV: (filePath: string) => Promise<any[]>;
     exportReport: (campaignId: string, format?: string) => Promise<{ success: boolean; filePath: string }>;
@@ -161,7 +157,6 @@ export interface WalletExport {
   version: string;
   timestamp: string;
   wallets: Wallet[];
-  settings: AppSettings;
 }
 
 export interface ProgressData {
@@ -203,36 +198,6 @@ export interface SolanaRPC {
   enabled: boolean;
 }
 
-// Settings types
-export interface AppSettings {
-  chains: EVMChain[];
-  gasSettings: GasSettings;
-  batchSettings: BatchSettings;
-  securitySettings: SecuritySettings;
-  notificationSettings: NotificationSettings;
-}
-
-export interface GasSettings {
-  defaultGasPrice: number; // in Gwei
-  defaultGasLimit: number;
-  autoAdjustGas: boolean;
-  maxGasPrice: number;
-  priorityFee: number;
-}
-
-export interface BatchSettings {
-  batchSize: number;
-  sendInterval: number; // in milliseconds
-  maxConcurrency: number;
-}
-
-export interface SecuritySettings {
-  autoBackup: boolean;
-  backupInterval: number; // in hours
-  encryptPrivateKeys: boolean;
-  sessionTimeout: number; // in minutes
-  requirePassword: boolean;
-}
 
 
 // Wallet Management types
@@ -326,146 +291,3 @@ export interface NetworkTestResult {
   timestamp: string;
 }
 
-// Bulk Reward Tool Types
-export interface BulkRewardActivity {
-  id: string;
-  name: string;
-  description?: string;
-  chain: string;
-  chainName: string;
-  tokenAddress: string;
-  tokenSymbol: string;
-  tokenDecimals: number;
-  status: 'CREATED' | 'FUNDING' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
-  totalRecipients: number;
-  completedRecipients: number;
-  failedRecipients: number;
-  pendingRecipients: number;
-  totalAmount: string;
-  completedAmount: string;
-  failedAmount: string;
-  gasUsed: string;
-  gasEstimate: string;
-  gasCostUSD: number;
-  walletAddress: string;
-  batchContractAddress?: string;
-  tokenContractAddress: string;
-  createdAt: string;
-  updatedAt: string;
-  startedAt?: string;
-  completedAt?: string;
-  batchSize: number;
-  sendInterval: number;
-  csvFilePath?: string;
-  notes?: string;
-}
-
-export interface BulkRewardRecipient {
-  id: string;
-  activityId: string;
-  address: string;
-  amount: string;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
-  transactionHash?: string;
-  gasUsed?: string;
-  error?: string;
-  batchId?: number;
-  createdAt: string;
-  updatedAt: string;
-  processedAt?: string;
-}
-
-export interface BulkRewardBatch {
-  id: string;
-  activityId: string;
-  batchNumber: number;
-  totalRecipients: number;
-  completedRecipients: number;
-  failedRecipients: number;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
-  transactionHash?: string;
-  gasUsed?: string;
-  gasPrice?: string;
-  gasCost?: string;
-  errorMessage?: string;
-  createdAt: string;
-  processedAt?: string;
-}
-
-export interface BulkRewardStatistics {
-  totalActivities: number;
-  successfulActivities: number;
-  failedActivities: number;
-  ongoingActivities: number;
-  totalRecipients: number;
-  completedRecipients: number;
-  failedRecipients: number;
-  totalGasUsed: string;
-  totalGasCostUSD: number;
-  weeklyActivities: number;
-  weeklyGasCostUSD: number;
-  successRate: number;
-  averageSuccessRate: number;
-}
-
-export interface BulkRewardEstimate {
-  totalRecipients: number;
-  totalAmount: string;
-  gasEstimate: string;
-  gasCostUSD: number;
-  estimatedTime: number; // in minutes
-  batchCount: number;
-  successProbability: number;
-  costPerRecipient: number;
-}
-
-export interface BulkRewardDashboardData {
-  statistics: BulkRewardStatistics;
-  ongoingActivities: BulkRewardActivity[];
-  recentActivities: BulkRewardActivity[];
-  chainDistribution: Record<string, number>;
-  weeklyTrends: {
-    date: string;
-    activities: number;
-    recipients: number;
-    gasCost: number;
-  }[];
-}
-
-export interface BulkRewardCSVValidation {
-  isValid: boolean;
-  totalRecords: number;
-  validRecords: number;
-  invalidRecords: number;
-  duplicateRecords: number;
-  totalAmount: string;
-  errors: {
-    row: number;
-    address: string;
-    amount: string;
-    error: string;
-  }[];
-  sampleData: BulkRewardRecipient[];
-}
-
-export interface BulkRewardSettings {
-  defaultBatchSize: number;
-  defaultSendInterval: number;
-  maxGasPrice: number;
-  priorityGasPrice: number;
-  confirmationThreshold: number;
-}
-
-export interface BulkRewardFilter {
-  status?: BulkRewardActivity['status'] | 'ALL';
-  chain?: string | 'ALL';
-  dateRange?: {
-    start: string;
-    end: string;
-  };
-  search?: string;
-  sortBy?: 'createdAt' | 'updatedAt' | 'totalRecipients' | 'completedAt';
-  sortOrder?: 'asc' | 'desc';
-  page: number;
-  limit: number;
-}

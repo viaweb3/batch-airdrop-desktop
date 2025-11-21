@@ -337,12 +337,7 @@ export default function Settings() {
 
   const loadSettings = async () => {
     try {
-      if (window.electronAPI?.settings) {
-        const loadedSettings = await window.electronAPI.settings.get();
-        if (loadedSettings) {
-          setSettings(loadedSettings);
-        }
-      }
+      // Settings service removed, using default state
     } catch (error) {
       console.error('Failed to load settings:', error);
     }

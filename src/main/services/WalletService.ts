@@ -108,27 +108,4 @@ export class WalletService {
       }
     }
   }
-
-  async generateQRCode(data: string): Promise<string> {
-    try {
-      const QRCode = await import('qrcode');
-
-      // Generate QR code as data URL
-      const qrCodeDataURL = await QRCode.toDataURL(data, {
-        errorCorrectionLevel: 'M',
-        type: 'image/png',
-        width: 300,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
-
-      return qrCodeDataURL;
-    } catch (error) {
-      console.error('Failed to generate QR code:', error);
-      throw new Error('QR code generation failed');
-    }
-  }
 }

@@ -5,7 +5,6 @@ import { WalletService } from '../services/WalletService';
 import { BlockchainService } from '../services/BlockchainService';
 import { ChainService } from '../services/ChainService';
 import { FileService } from '../services/FileService';
-import { SettingsService } from '../services/SettingsService';
 import { PriceService } from '../services/PriceService';
 import { ContractService } from '../services/ContractService';
 
@@ -15,7 +14,6 @@ let walletService: WalletService;
 let blockchainService: BlockchainService;
 let chainService: ChainService;
 let fileService: FileService;
-let settingsService: SettingsService;
 let priceService: PriceService;
 let contractService: ContractService;
 
@@ -45,9 +43,7 @@ export async function setupIPCHandlers() {
     console.log('Initializing file service...');
     fileService = new FileService(databaseManager);
 
-    console.log('Initializing settings service...');
-    settingsService = new SettingsService(databaseManager);
-
+    
     console.log('Initializing contract service...');
     contractService = new ContractService();
 
@@ -271,29 +267,7 @@ export async function setupIPCHandlers() {
     }
   });
 
-  // 设置相关
-  ipcMain.handle('settings:get', async (_event) => {
-    try {
-      console.log('获取设置');
-      const settings = await settingsService.getSettings();
-      return settings;
-    } catch (error) {
-      console.error('获取设置失败:', error);
-      throw new Error(`获取设置失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    }
-  });
-
-  ipcMain.handle('settings:update', async (_event, settings) => {
-    try {
-      console.log('更新设置:', settings);
-      const result = await settingsService.updateSettings(settings);
-      return result;
-    } catch (error) {
-      console.error('更新设置失败:', error);
-      throw new Error(`更新设置失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    }
-  });
-
+  
   // 文件操作
   ipcMain.handle('file:readCSV', async (_event, filePath) => {
     try {

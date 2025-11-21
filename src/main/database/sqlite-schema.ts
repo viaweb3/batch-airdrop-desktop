@@ -22,11 +22,6 @@ export interface Campaign {
   updated_at: string;
 }
 
-export interface Setting {
-  key: string;
-  value: string;
-  updated_at: string;
-}
 
 export class DatabaseManager {
   private db: Database | null = null;
@@ -185,15 +180,7 @@ export class DatabaseManager {
       )
     `);
 
-    // 设置表
-    await this.db.exec(`
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    `);
-
+    
     // 价格历史表 - 添加缺失的列
     await this.db.exec(`
       CREATE TABLE IF NOT EXISTS price_history (
@@ -220,16 +207,7 @@ export class DatabaseManager {
       )
     `);
 
-    // 审计日志表
-    await this.db.exec(`
-      CREATE TABLE IF NOT EXISTS audit_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        action TEXT NOT NULL,
-        details TEXT,
-        created_at TEXT NOT NULL
-      )
-    `);
-
+    
     // 创建索引
     await this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_recipients_campaign_id ON recipients(campaign_id);
@@ -244,9 +222,6 @@ export class DatabaseManager {
 
     // 插入默认链信息
     await this.insertDefaultChains();
-
-    // 插入默认设置
-    await this.insertDefaultSettings();
   }
 
   private async insertDefaultChains(): Promise<void> {
@@ -364,27 +339,7 @@ export class DatabaseManager {
     }
   }
 
-  private async insertDefaultSettings(): Promise<void> {
-    if (!this.db) return;
-
-    const defaultSettings = [
-      { key: 'theme', value: 'dark' },
-      { key: 'language', value: 'zh-CN' },
-      { key: 'network', value: 'ethereum' }
-    ];
-
-    for (const setting of defaultSettings) {
-      try {
-        await this.db.run(`
-          INSERT OR REPLACE INTO settings (key, value, updated_at)
-          VALUES (?, ?, ?)
-        `, [setting.key, setting.value, new Date().toISOString()]);
-      } catch (error) {
-        console.error('Failed to insert default setting:', error);
-      }
-    }
-  }
-
+  
   // 获取数据库实例 - 返回适配器以提供同步API
   getDatabase(): DatabaseAdapter {
     if (!this.db) {
