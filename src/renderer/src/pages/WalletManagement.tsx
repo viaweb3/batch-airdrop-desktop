@@ -19,7 +19,27 @@ export default function WalletManagement() {
   const loadWallets = async () => {
     setLoading(true);
     try {
-      // Mock data for demonstration
+      // Load real wallet data from backend
+      if (window.electronAPI?.wallet) {
+        const walletsData = await window.electronAPI.wallet.list({
+          limit: pageSize,
+          offset: (currentPage - 1) * pageSize,
+        });
+        setWallets(walletsData);
+      }
+    } catch (error) {
+      console.error('Failed to load wallets:', error);
+      // Fallback to empty array
+      setWallets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadWalletsOld = async () => {
+    setLoading(true);
+    try {
+      // Mock data for demonstration - DEPRECATED
       const mockWallets: ActivityWallet[] = [
         {
           id: '1',

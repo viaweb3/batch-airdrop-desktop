@@ -67,54 +67,51 @@ export default function CampaignDetail() {
   const loadCampaign = async () => {
     setLoading(true);
     try {
-      // Mock data for demonstration
-      const mockCampaign: Campaign = {
-        id: id || 'a1b2cd3d-e5f6-4266-14174000',
-        name: '2025-01 营销活动',
-        chain: 'polygon',
-        chainId: 137,
-        tokenAddress: '0x7ceB23fd6bC0adD59E62ac25578270cFf1b9f619',
-        tokenSymbol: 'WETH',
-        status: 'SENDING',
-        totalRecipients: 1000,
-        completedRecipients: 750,
-        failedRecipients: 0,
-        walletAddress: '0x1234567890123456789012345678901234567890',
-        contractAddress: '0xaB1234567890abcdef1234567890abcdef1234',
-        createdAt: '2025-11-19T14:30:00Z',
-        updatedAt: '2025-11-19T14:35:00Z'
-      };
-
-      const mockTransactions: TransactionRecord[] = [
-        { id: '1', batchNumber: 1, status: 'success', addressCount: 100, txHash: '0xabc123...', gasUsed: '21000', createdAt: new Date(Date.now() - 3600000).toISOString() },
-        { id: '2', batchNumber: 2, status: 'success', addressCount: 100, txHash: '0xdef456...', gasUsed: '21000', createdAt: new Date(Date.now() - 3000000).toISOString() },
-        { id: '3', batchNumber: 3, status: 'success', addressCount: 100, txHash: '0xghi789...', gasUsed: '21000', createdAt: new Date(Date.now() - 2400000).toISOString() },
-        { id: '4', batchNumber: 4, status: 'success', addressCount: 100, txHash: '0xjkl012...', gasUsed: '21000', createdAt: new Date(Date.now() - 1800000).toISOString() },
-        { id: '5', batchNumber: 5, status: 'success', addressCount: 100, txHash: '0xmno345...', gasUsed: '21000', createdAt: new Date(Date.now() - 1200000).toISOString() },
-        { id: '6', batchNumber: 6, status: 'success', addressCount: 100, txHash: '0xpqr678...', gasUsed: '21000', createdAt: new Date(Date.now() - 600000).toISOString() },
-        { id: '7', batchNumber: 7, status: 'success', addressCount: 100, txHash: '0xstu901...', gasUsed: '21000', createdAt: new Date(Date.now() - 300000).toISOString() },
-        { id: '8', batchNumber: 8, status: 'sending', addressCount: 50, createdAt: new Date().toISOString() },
-      ];
-
-      // Generate more mock recipients for pagination testing
-      const mockRecipients: Recipient[] = [];
-      const statuses: Recipient['status'][] = ['success', 'sending', 'pending', 'failed'];
-
-      for (let i = 0; i < 50; i++) {
-        mockRecipients.push({
-          address: `0x${i.toString(16).padStart(40, '0')}`,
-          amount: `${Math.floor(Math.random() * 200) + 50} WETH`,
-          status: statuses[Math.floor(Math.random() * statuses.length)],
-          txHash: Math.random() > 0.3 ? `0x${Math.random().toString(16).substr(2, 10)}...` : undefined,
-        });
+      if (!id) {
+        throw new Error('Campaign ID is required');
       }
 
-      setCampaign(mockCampaign);
-      setTransactions(mockTransactions);
-      setRecipients(mockRecipients);
+      // Load campaign details from backend
+      if (window.electronAPI?.campaign) {
+        const details = await window.electronAPI.campaign.getDetails(id);
+
+        if (!details) {
+          throw new Error('Campaign not found');
+        }
+
+        // Set campaign data
+        setCampaign({
+          ...details.campaign,
+          chainId: parseInt(details.campaign.chain),
+        });
+
+        // Load transactions
+        const txData = await window.electronAPI.campaign.getTransactions(id, {
+          limit: 100,
+        });
+        setTransactions(txData.map((tx: any) => ({
+          id: tx.id.toString(),
+          batchNumber: tx.id,
+          status: tx.status === 'CONFIRMED' ? 'success' : tx.status === 'PENDING' ? 'sending' : 'failed',
+          addressCount: 1,
+          txHash: tx.txHash,
+          gasUsed: tx.gasUsed?.toString(),
+          createdAt: tx.createdAt,
+        })));
+
+        // Load recipients
+        const recipientsData = await window.electronAPI.campaign.getRecipients(id);
+        setRecipients(recipientsData.map((r: any) => ({
+          address: r.address,
+          amount: r.amount,
+          status: r.status === 'SENT' ? 'success' : r.status === 'PENDING' ? 'pending' : r.status === 'FAILED' ? 'failed' : 'sending',
+          txHash: r.txHash,
+          error: r.errorMessage,
+        })));
+      }
     } catch (error) {
       console.error('Failed to load campaign:', error);
-      alert('加载活动详情失败');
+      alert('加载活动详情失败: ' + (error instanceof Error ? error.message : '未知错误'));
     } finally {
       setLoading(false);
     }
@@ -145,9 +142,45 @@ export default function CampaignDetail() {
     }
   };
 
-  const handlePauseResume = () => {
-    setIsPaused(!isPaused);
-    // Implementation would go here
+  const handlePauseResume = async () => {
+    if (!campaign || !id) return;
+
+    try {
+      if (window.electronAPI?.campaign) {
+        if (campaign.status === 'SENDING') {
+          // Pause campaign
+          await window.electronAPI.campaign.pause(id);
+          alert('活动已暂停');
+          await loadCampaign(); // Reload to get updated status
+        } else if (campaign.status === 'PAUSED') {
+          // Resume campaign
+          await window.electronAPI.campaign.resume(id);
+          alert('活动已恢复');
+          await loadCampaign(); // Reload to get updated status
+        }
+      }
+    } catch (error) {
+      console.error('Failed to pause/resume campaign:', error);
+      alert('操作失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!campaign || !id) return;
+
+    const confirmed = confirm('确定要取消此活动吗？此操作不可撤销。');
+    if (!confirmed) return;
+
+    try {
+      if (window.electronAPI?.campaign) {
+        await window.electronAPI.campaign.cancel(id);
+        alert('活动已取消');
+        await loadCampaign(); // Reload to get updated status
+      }
+    } catch (error) {
+      console.error('Failed to cancel campaign:', error);
+      alert('取消活动失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    }
   };
 
   // Pagination logic
@@ -337,12 +370,22 @@ export default function CampaignDetail() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handlePauseResume}
-            className={`btn ${isPaused ? 'btn-success' : 'btn-warning'}`}
-          >
-            {isPaused ? '▶️ 继续' : '⏸️ 暂停'}
-          </button>
+          {campaign && (campaign.status === 'SENDING' || campaign.status === 'PAUSED') && (
+            <>
+              <button
+                onClick={handlePauseResume}
+                className={`btn ${campaign.status === 'PAUSED' ? 'btn-success' : 'btn-warning'}`}
+              >
+                {campaign.status === 'PAUSED' ? '▶️ 恢复' : '⏸️ 暂停'}
+              </button>
+              <button
+                onClick={handleCancel}
+                className="btn btn-error"
+              >
+                ❌ 取消活动
+              </button>
+            </>
+          )}
           <button
             onClick={() => navigate('/')}
             className="btn btn-ghost"
