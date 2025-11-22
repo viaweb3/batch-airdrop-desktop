@@ -203,22 +203,72 @@ export default function CampaignDetail() {
     }
   };
 
-  const handleCancel = async () => {
+  const handleDeployContract = async () => {
     if (!campaign || !id) return;
 
-    const confirmed = confirm('确定要取消此活动吗？此操作不可撤销。');
+    const confirmed = confirm('确定要为此活动部署合约吗？此操作将消耗一定的gas费用。');
     if (!confirmed) return;
 
     try {
       if (window.electronAPI?.campaign) {
-        await window.electronAPI.campaign.cancel(id);
-        alert('活动已取消');
+        const result = await window.electronAPI.campaign.deployContract(id);
+        alert(`合约部署成功！合约地址: ${result.contractAddress}`);
         await loadCampaign(); // Reload to get updated status
       }
     } catch (error) {
-      console.error('Failed to cancel campaign:', error);
-      alert('取消活动失败: ' + (error instanceof Error ? error.message : '未知错误'));
+      console.error('Failed to deploy contract:', error);
+      const errorMessage = getSolanaSpecificErrorMessage(error);
+      alert('合约部署失败: ' + errorMessage);
     }
+  };
+
+  const handleRetryFailedTransactions = async () => {
+    if (!campaign || !id) return;
+
+    const confirmed = confirm('确定要重试所有失败的交易吗？这将重置失败交易的错误状态，然后可以恢复发送。');
+    if (!confirmed) return;
+
+    try {
+      if (window.electronAPI?.campaign) {
+        const result = await window.electronAPI.campaign.retryFailedTransactions(id);
+        alert(result.message || '重试设置成功');
+        await loadCampaign(); // Reload to get updated status
+        await loadRecipients(); // Reload recipients to reflect the changes
+      }
+    } catch (error) {
+      console.error('Failed to retry failed transactions:', error);
+      const errorMessage = getSolanaSpecificErrorMessage(error);
+      alert('重试失败: ' + errorMessage);
+    }
+  };
+
+  const isSolanaChain = (chain: string | undefined): boolean => {
+    return chain?.toLowerCase().includes('solana') || false;
+  };
+
+  const getSolanaSpecificErrorMessage = (error: any): string => {
+    const errorMessage = error?.message || error?.toString() || '';
+
+    if (errorMessage.includes('insufficient funds') || errorMessage.includes('insufficient lamports')) {
+      return 'SOL余额不足，请确保钱包有足够的SOL支付网络费用';
+    }
+    if (errorMessage.includes('Invalid account') || errorMessage.includes('not found')) {
+      return '代币账户不存在或无效，请检查代币地址';
+    }
+    if (errorMessage.includes('Token account not found')) {
+      return 'SPL代币账户不存在，请确保地址正确';
+    }
+    if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+      return 'Solana网络连接超时，请稍后重试';
+    }
+    if (errorMessage.includes('blockhash')) {
+      return 'Solana区块哈希过期，请重试交易';
+    }
+    if (errorMessage.includes('rate limit')) {
+      return 'Solana API请求过于频繁，请稍后重试';
+    }
+
+    return errorMessage || 'Solana操作失败，请检查网络连接和余额';
   };
 
   // Pagination logic
@@ -426,31 +476,89 @@ export default function CampaignDetail() {
     setIsRefreshingBalance(true);
     try {
       if (window.electronAPI?.wallet && campaign.walletAddress) {
-        // Get native currency balance (e.g., ETH, BNB, MATIC)
-        const nativeBalance = await window.electronAPI.wallet.getBalance(
-          campaign.walletAddress,
-          campaign.chain
-        );
+        let nativeBalance, tokenBalance = null;
 
-        // Get token balance if token address is provided
-        let tokenBalance = null;
-        if (campaign.tokenAddress && campaign.tokenAddress !== '0x0000000000000000000000000000000000000000') {
-          try {
-            tokenBalance = await window.electronAPI.wallet.getBalance(
-              campaign.walletAddress,
-              campaign.chain,
-              campaign.tokenAddress,
-              campaign.tokenDecimals
-            );
-          } catch (tokenError) {
-            console.warn('Failed to get token balance:', tokenError);
+        if (isSolanaChain(campaign.chain)) {
+          // Solana逻辑
+          if (window.electronAPI?.solana) {
+            try {
+              // 获取SOL余额
+              const solBalance = await window.electronAPI.solana.getBalance(
+                getChainByName(campaign.chain)?.rpcUrl || 'https://solana-rpc.publicnode.com',
+                campaign.walletAddress
+              );
+
+              nativeBalance = { native: solBalance.balance || '0' };
+
+              // 如果是SPL代币，获取代币余额
+              if (campaign.tokenAddress &&
+                  campaign.tokenAddress !== 'So11111111111111111111111111111111111111112') {
+                try {
+                  const splBalance = await window.electronAPI.solana.getBalance(
+                    getChainByName(campaign.chain)?.rpcUrl || 'https://solana-rpc.publicnode.com',
+                    campaign.walletAddress,
+                    campaign.tokenAddress
+                  );
+                  tokenBalance = { token: splBalance.balance || '0' };
+                } catch (tokenError) {
+                  console.warn('Failed to get SPL token balance:', tokenError);
+                  tokenBalance = null;
+                }
+              }
+            } catch (error) {
+              console.error('Failed to get Solana balances:', error);
+              // 如果Solana API失败，尝试使用通用API作为fallback
+              try {
+                nativeBalance = await window.electronAPI.wallet.getBalance(
+                  campaign.walletAddress,
+                  campaign.chain
+                );
+                if (campaign.tokenAddress &&
+                    campaign.tokenAddress !== 'So11111111111111111111111111111111111111112') {
+                  tokenBalance = await window.electronAPI.wallet.getBalance(
+                    campaign.walletAddress,
+                    campaign.chain,
+                    campaign.tokenAddress,
+                    campaign.tokenDecimals
+                  );
+                }
+              } catch (fallbackError) {
+                console.error('Fallback balance query also failed:', fallbackError);
+                nativeBalance = { native: '0' };
+                tokenBalance = null;
+              }
+            }
+          } else {
+            console.warn('Solana API not available, skipping balance refresh');
+            nativeBalance = { native: '0' };
             tokenBalance = null;
+          }
+        } else {
+          // EVM逻辑
+          nativeBalance = await window.electronAPI.wallet.getBalance(
+            campaign.walletAddress,
+            campaign.chain
+          );
+
+          // Get token balance if token address is provided
+          if (campaign.tokenAddress && campaign.tokenAddress !== '0x0000000000000000000000000000000000000000') {
+            try {
+              tokenBalance = await window.electronAPI.wallet.getBalance(
+                campaign.walletAddress,
+                campaign.chain,
+                campaign.tokenAddress,
+                campaign.tokenDecimals
+              );
+            } catch (tokenError) {
+              console.warn('Failed to get token balance:', tokenError);
+              tokenBalance = null;
+            }
           }
         }
 
         setWalletBalances({
           native: {
-            current: nativeBalance.native || '0',
+            current: nativeBalance?.native || '0',
             total: '∞' // No total limit for native currency
           },
           token: {
@@ -535,6 +643,22 @@ export default function CampaignDetail() {
           <h1 className="text-3xl font-bold">{campaign.name}</h1>
         </div>
         <div className="flex gap-2">
+          {campaign && (campaign.status === 'CREATED' || campaign.status === 'FUNDED') && !isSolanaChain(campaign.chain) && (
+            <button
+              onClick={handleDeployContract}
+              className="btn btn-primary"
+            >
+                🚀 部署合约
+            </button>
+          )}
+          {campaign && campaign.status === 'FUNDED' && isSolanaChain(campaign.chain) && (
+            <button
+              onClick={() => navigate(`/campaign/${id}/start`)}
+              className="btn btn-success"
+            >
+                🚀 开始发送
+            </button>
+          )}
           {campaign && (campaign.status === 'SENDING' || campaign.status === 'PAUSED') && (
             <>
               <button
@@ -543,12 +667,14 @@ export default function CampaignDetail() {
               >
                 {campaign.status === 'PAUSED' ? '▶️ 恢复' : '⏸️ 暂停'}
               </button>
-              <button
-                onClick={handleCancel}
-                className="btn btn-error"
-              >
-                ❌ 取消活动
-              </button>
+              {campaign.status === 'PAUSED' && campaign.failedRecipients > 0 && (
+                <button
+                  onClick={handleRetryFailedTransactions}
+                  className="btn btn-info"
+                >
+                  🔄 重试失败交易
+                </button>
+              )}
             </>
           )}
           <button

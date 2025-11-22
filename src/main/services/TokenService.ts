@@ -156,42 +156,30 @@ export class TokenService {
       // 创建连接
       const connection = new Connection(chain.rpcUrl, 'confirmed');
 
-      // 获取代币账户信息
-      const accountInfo = await connection.getAccountInfo(new PublicKey(tokenAddress));
+      // 获取mint账户信息
+      const mintInfo = await connection.getParsedAccountInfo(new PublicKey(tokenAddress));
 
-      if (!accountInfo) {
-        throw new Error('Token account not found');
+      if (!mintInfo?.value) {
+        throw new Error('Token mint account not found');
       }
 
-      // 验证是否为代币账户
-      if (!accountInfo.owner.equals(TOKEN_PROGRAM_ID)) {
-        throw new Error('Invalid token account - not a valid SPL token');
-      }
-
-      // 获取代币信息
-      const tokenInfo = await connection.getParsedAccountInfo(new PublicKey(tokenAddress));
-
-      if (!tokenInfo.value) {
-        throw new Error('Token account not found');
-      }
-
-      // 检查数据是否为ParsedAccountData类型
-      const accountData = tokenInfo.value.data as any;
+      // 验证是否为mint账户
+      const accountData = mintInfo.value.data as any;
       if (Buffer.isBuffer(accountData)) {
-        throw new Error('Unable to parse token account data - received raw buffer');
+        throw new Error('Unable to parse mint account data');
       }
 
       if (!accountData.parsed || accountData.program !== 'spl-token') {
-        throw new Error('Unable to parse token account info - not a valid SPL token');
+        throw new Error('Not a valid SPL token mint account');
       }
 
-      const parsedData = accountData.parsed;
-      const tokenMintInfo = parsedData.info;
+      const parsedData = accountData.parsed.info;
 
+      // 对于SPL token，我们返回基本信息
       return {
-        name: tokenMintInfo.name || 'Unknown Token', // SPL token可能没有name字段
-        symbol: tokenMintInfo.symbol || 'UNKNOWN',    // SPL token可能没有symbol字段
-        decimals: tokenMintInfo.decimals || 0,
+        name: this.getTokenNameFromMint(tokenAddress) || 'SPL Token',
+        symbol: this.getTokenSymbolFromMint(tokenAddress) || 'SPL',
+        decimals: parsedData.decimals || 0,
         address: tokenAddress,
         chainType: 'solana',
       };
@@ -199,6 +187,35 @@ export class TokenService {
       console.error(`Failed to get Solana token info for ${tokenAddress}:`, error);
       throw new Error(`Failed to fetch Solana token info: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * 根据mint地址获取代币名称（简化版本，可以扩展）
+   */
+  private getTokenNameFromMint(mintAddress: string): string | null {
+    // 常见SPL代币的硬编码映射
+    const knownTokens: { [key: string]: string } = {
+      'So11111111111111111111111111111111111111112': 'Wrapped SOL',
+      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 'USDC',
+      'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 'USDT',
+      'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263': 'Bonk',
+      'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So': 'Raydium',
+    };
+    return knownTokens[mintAddress] || null;
+  }
+
+  /**
+   * 根据mint地址获取代币符号（简化版本，可以扩展）
+   */
+  private getTokenSymbolFromMint(mintAddress: string): string | null {
+    const knownTokens: { [key: string]: string } = {
+      'So11111111111111111111111111111111111111112': 'SOL',
+      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 'USDC',
+      'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 'USDT',
+      'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263': 'BONK',
+      'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So': 'RAY',
+    };
+    return knownTokens[mintAddress] || null;
   }
 
   /**

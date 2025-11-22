@@ -35,6 +35,11 @@ export default function CampaignCreate() {
   const [csvValidation, setCsvValidation] = useState<CSVValidationResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [csvData, setCsvData] = useState<any[]>([]);
+
+  // 链类型检测
+  const isSolanaChain = (chain: string): boolean => {
+    return chain?.toLowerCase().includes('solana');
+  };
   const [tokenAddressError, setTokenAddressError] = useState<string>('');
   const [estimation, setEstimation] = useState<any>(null);
   const [isEstimating, setIsEstimating] = useState(false);
@@ -594,16 +599,37 @@ export default function CampaignCreate() {
                   <span className="text-sm font-medium">每批处理地址数量</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {[50, 100, 200, 500].map(size => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, batchSize: size }))}
-                      className={`btn ${formData.batchSize === size ? 'btn-primary' : 'btn-outline'}`}
-                    >
-                      {size} {size === 50 && '(推荐)'}
-                    </button>
-                  ))}
+                  {(() => {
+                    // 根据链类型调整推荐设置
+                    const isSolana = formData.chain && isSolanaChain(formData.chain);
+                    if (isSolana) {
+                      // Solana网络 - 基于QuickNode最佳实践
+      // SPL代币：每交易最多8个转账地址（需要创建账户指令）
+      // SOL转账：每交易最多15个转账地址（基于QuickNode的10条指令建议优化）
+                      return [5, 8, 12, 15].map(size => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, batchSize: size }))}
+                          className={`btn ${formData.batchSize === size ? 'btn-primary' : 'btn-outline'}`}
+                        >
+                          {size} {size === 8 && '(推荐)'} ⚡
+                        </button>
+                      ));
+                    } else {
+                      // EVM网络 - 智能合约可以支持更大的批量
+                      return [50, 100, 200, 500].map(size => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, batchSize: size }))}
+                          className={`btn ${formData.batchSize === size ? 'btn-primary' : 'btn-outline'}`}
+                        >
+                          {size} {size === 50 && '(推荐)'}
+                        </button>
+                      ));
+                    }
+                  })()}
                 </div>
               </div>
 
@@ -612,24 +638,56 @@ export default function CampaignCreate() {
                   <span className="text-sm font-medium">批次发送间隔</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: '15000', label: '15秒', recommended: true },
-                    { value: '20000', label: '20秒' },
-                    { value: '30000', label: '30秒' },
-                    { value: '45000', label: '45秒' },
-                    { value: '60000', label: '60秒' }
-                  ].map(interval => (
-                    <button
-                      key={interval.value}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, sendInterval: interval.value }))}
-                      className={`btn ${formData.sendInterval === interval.value ? 'btn-primary' : 'btn-outline'}`}
-                    >
-                      {interval.label} {interval.recommended && '(推荐)'}
-                    </button>
-                  ))}
+                  {(() => {
+                    // 根据链类型调整推荐设置
+                    const isSolana = formData.chain && isSolanaChain(formData.chain);
+                    if (isSolana) {
+                      // Solana网络 - 考虑到批量变小，总体需要更快频率来补偿
+                      return [
+                        { value: '3000', label: '3秒' },
+                        { value: '5000', label: '5秒', recommended: true },
+                        { value: '8000', label: '8秒' },
+                        { value: '10000', label: '10秒' },
+                        { value: '15000', label: '15秒' }
+                      ].map(interval => (
+                        <button
+                          key={interval.value}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, sendInterval: interval.value }))}
+                          className={`btn ${formData.sendInterval === interval.value ? 'btn-primary' : 'btn-outline'}`}
+                        >
+                          {interval.label} {interval.recommended && '(推荐)'} ⚡
+                        </button>
+                      ));
+                    } else {
+                      // EVM网络 - 保持原有设置
+                      return [
+                        { value: '15000', label: '15秒', recommended: true },
+                        { value: '20000', label: '20秒' },
+                        { value: '30000', label: '30秒' },
+                        { value: '45000', label: '45秒' },
+                        { value: '60000', label: '60秒' }
+                      ].map(interval => (
+                        <button
+                          key={interval.value}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, sendInterval: interval.value }))}
+                          className={`btn ${formData.sendInterval === interval.value ? 'btn-primary' : 'btn-outline'}`}
+                        >
+                          {interval.label} {interval.recommended && '(推荐)'}
+                        </button>
+                      ));
+                    }
+                  })()}
                 </div>
-              </div>
+                {/* Solana优化提示 */}
+                {isSolanaChain(formData.chain) && (
+                  <div className="mt-2">
+                    <span className="text-xs text-warning">
+                      <strong>⚡ Solana限制：</strong>由于交易大小限制，SPL代币每批仅支持8个地址，但通过更高频率补偿总体效率
+                    </span>
+                  </div>
+                )}
             </div>
           </div>
         </div>

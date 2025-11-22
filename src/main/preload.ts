@@ -15,9 +15,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getTransactions: (id: string, options?: any) => ipcRenderer.invoke('campaign:getTransactions', id, options),
     getRecipients: (id: string) => ipcRenderer.invoke('campaign:getRecipients', id),
     estimate: (request: any) => ipcRenderer.invoke('campaign:estimate', request),
+    deployContract: (id: string) => ipcRenderer.invoke('campaign:deployContract', id),
+    retryFailedTransactions: (id: string) => ipcRenderer.invoke('campaign:retryFailedTransactions', id),
     onProgress: (callback: any) => {
       ipcRenderer.on('campaign:progress', (_event, data) => callback(data));
     },
+  },
+
+  // Solana操作
+  solana: {
+    getBalance: (rpcUrl: string, walletAddress: string, tokenAddress?: string) =>
+      ipcRenderer.invoke('solana:getBalance', rpcUrl, walletAddress, tokenAddress),
+    batchTransfer: (rpcUrl: string, privateKeyBase64: string, recipients: string[], amounts: string[], tokenAddress: string) =>
+      ipcRenderer.invoke('solana:batchTransfer', rpcUrl, privateKeyBase64, recipients, amounts, tokenAddress),
+    getTransactionStatus: (rpcUrl: string, transactionHash: string) =>
+      ipcRenderer.invoke('solana:getTransactionStatus', rpcUrl, transactionHash),
+    getTokenInfo: (rpcUrl: string, tokenAddress: string) =>
+      ipcRenderer.invoke('solana:getTokenInfo', rpcUrl, tokenAddress),
   },
 
   // 钱包操作

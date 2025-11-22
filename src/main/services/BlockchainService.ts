@@ -12,6 +12,14 @@ export interface GasEstimate {
   gasPrice: string;
   gasCost: string;
   gasCostUsd: string;
+  networkInfo?: {
+    blockhash?: string;
+    lastValidBlockHeight?: number;
+    priorityFee?: string;
+    baseFee?: string;
+    fallback?: boolean;
+    reason?: string;
+  };
 }
 
 export interface TransactionData {
@@ -220,26 +228,82 @@ export class BlockchainService {
   }
 
   private async estimateSolanaGas(
-    _chain: string,
+    chain: string,
     transactionCount: number,
     rpcUrl?: string
   ): Promise<GasEstimate> {
-    // 简化处理，使用固定的费用计算
-    void rpcUrl; // 避免未使用变量的警告
-    const baseFeePerSignature = BigInt('5000');
-    const totalLamports = baseFeePerSignature * BigInt(transactionCount * 2);
-    const solCost = totalLamports / BigInt(LAMPORTS_PER_SOL);
+    try {
+      const connection = rpcUrl
+        ? new Connection(rpcUrl, 'confirmed')
+        : new Connection('https://solana-rpc.publicnode.com', 'confirmed');
 
-    // 获取SOL价格
-    const solPriceUsd = await this.getSOLPriceUSD();
-    const solCostUsd = (Number(solCost) * solPriceUsd).toFixed(6);
+      // 获取最新的区块哈希和费用信息
+      const { blockhash, lastValidBlockHeight, feeCalculator } = await connection.getLatestBlockhashAndFees();
 
-    return {
-      gasLimit: totalLamports.toString(),
-      gasPrice: baseFeePerSignature.toString(),
-      gasCost: solCost.toString(),
-      gasCostUsd: solCostUsd,
-    };
+      // 基础签名费用
+      const baseFeePerSignature = BigInt(feeCalculator?.value?.lamportsPerSignature || 5000);
+
+      // Solana交易的典型组件费用估算
+      const computeUnitsPerInstruction = 200000; // 典型的compute unit限制
+      const computeUnitPrice = BigInt(feeCalculator?.value?.computeUnitPrice || 0);
+
+      // 对于批量转账，每个交易包含多个指令
+      const instructionsPerTransfer = 5; // 转账 + 可能的账户创建 + 其他指令
+      const totalInstructions = transactionCount * instructionsPerTransfer;
+      const totalComputeUnits = computeUnitsPerInstruction * totalInstructions;
+
+      // 计算总费用
+      const computeFee = BigInt(totalComputeUnits) * computeUnitPrice;
+      const signatureFees = baseFeePerSignature * BigInt(transactionCount + 1); // +1 for payer signature
+
+      // SPL转账的额外费用（创建关联账户等）
+      const splAccountCreationFee = BigInt('2039280') * Math.min(transactionCount, Math.floor(transactionCount * 0.3)); // 假设30%需要创建账户
+
+      const totalLamports = computeFee + signatureFees + splAccountCreationFee;
+      const solCost = totalLamports / BigInt(LAMPORTS_PER_SOL);
+
+      // 获取SOL价格
+      const solPriceUsd = await this.getSOLPriceUSD();
+      const solCostUsd = (Number(solCost) * solPriceUsd).toFixed(6);
+
+      // 添加网络拥堵缓冲 (20%)
+      const bufferedLamports = totalLamports * BigInt(12) / BigInt(10);
+      const bufferedSolCost = bufferedLamports / BigInt(LAMPORTS_PER_SOL);
+      const bufferedSolCostUsd = (Number(bufferedSolCost) * solPriceUsd).toFixed(6);
+
+      return {
+        gasLimit: bufferedLamports.toString(),
+        gasPrice: baseFeePerSignature.toString(),
+        gasCost: bufferedSolCost.toString(),
+        gasCostUsd: bufferedSolCostUsd,
+        networkInfo: {
+          blockhash,
+          lastValidBlockHeight,
+          priorityFee: computeUnitPrice.toString(),
+          baseFee: baseFeePerSignature.toString()
+        }
+      };
+    } catch (error) {
+      console.error('Failed to get dynamic Solana gas estimation:', error);
+      // Fallback to static estimation
+      const baseFeePerSignature = BigInt('5000');
+      const totalLamports = baseFeePerSignature * BigInt(transactionCount * 3); // 更保守的估算
+      const solCost = totalLamports / BigInt(LAMPORTS_PER_SOL);
+
+      const solPriceUsd = await this.getSOLPriceUSD();
+      const solCostUsd = (Number(solCost) * solPriceUsd).toFixed(6);
+
+      return {
+        gasLimit: totalLamports.toString(),
+        gasPrice: baseFeePerSignature.toString(),
+        gasCost: solCost.toString(),
+        gasCostUsd: solCostUsd,
+        networkInfo: {
+          fallback: true,
+          reason: 'Dynamic estimation failed, using static calculation'
+        }
+      };
+    }
   }
 
   private getDefaultRPC(chain: string): string {

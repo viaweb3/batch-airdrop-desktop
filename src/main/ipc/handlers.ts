@@ -56,6 +56,9 @@ export async function setupIPCHandlers() {
     console.log('Initializing contract service...');
     contractService = new ContractService();
 
+    console.log('Initializing Solana service...');
+    const solanaService = new SolanaService();
+
     console.log('Initializing campaign estimator...');
     campaignEstimator = new CampaignEstimator(databaseManager);
 
@@ -193,6 +196,47 @@ export async function setupIPCHandlers() {
     } catch (error) {
       console.error('估算活动成本失败:', error);
       throw new Error(`估算活动成本失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  });
+
+  // Solana相关API
+  ipcMain.handle('solana:getBalance', async (_event, rpcUrl, walletAddress, tokenAddress) => {
+    try {
+      const balance = await solanaService.getBalance(rpcUrl, walletAddress, tokenAddress);
+      return { success: true, balance };
+    } catch (error) {
+      console.error('获取Solana余额失败:', error);
+      throw new Error(`获取Solana余额失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  });
+
+  ipcMain.handle('solana:batchTransfer', async (_event, rpcUrl, privateKeyBase64, recipients, amounts, tokenAddress) => {
+    try {
+      const result = await solanaService.batchTransfer(rpcUrl, privateKeyBase64, recipients, amounts, tokenAddress);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Solana批量转账失败:', error);
+      throw new Error(`Solana批量转账失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  });
+
+  ipcMain.handle('solana:getTransactionStatus', async (_event, rpcUrl, transactionHash) => {
+    try {
+      const status = await solanaService.getTransactionStatus(rpcUrl, transactionHash);
+      return { success: true, data: status };
+    } catch (error) {
+      console.error('获取Solana交易状态失败:', error);
+      throw new Error(`获取Solana交易状态失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  });
+
+  ipcMain.handle('solana:getTokenInfo', async (_event, rpcUrl, tokenAddress) => {
+    try {
+      const tokenInfo = await solanaService.getTokenInfo(rpcUrl, tokenAddress);
+      return { success: true, data: tokenInfo };
+    } catch (error) {
+      console.error('获取Solana代币信息失败:', error);
+      throw new Error(`获取Solana代币信息失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   });
 
@@ -510,6 +554,18 @@ export async function setupIPCHandlers() {
     } catch (error) {
       console.error('部署合约失败:', error);
       throw new Error(`部署合约失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  });
+
+  // 重试失败的交易
+  ipcMain.handle('campaign:retryFailedTransactions', async (_event, campaignId) => {
+    try {
+      console.log('重试失败的交易:', campaignId);
+      await campaignService.retryFailedTransactions(campaignId);
+      return { success: true, message: '已重置失败的交易，可以重新开始发送' };
+    } catch (error) {
+      console.error('重试失败交易失败:', error);
+      throw new Error(`重试失败交易失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   });
 

@@ -267,8 +267,15 @@ export class CampaignService {
         throw new Error('Campaign not found');
       }
 
-      if (campaign.status !== 'READY' && campaign.status !== 'PAUSED') {
-        throw new Error('Campaign is not ready to start. Please deploy the contract first.');
+      // Solana链不需要READY状态，可以直接从FUNDED开始
+      if (!this.isSolanaChain(campaign.chain)) {
+        if (campaign.status !== 'READY' && campaign.status !== 'PAUSED') {
+          throw new Error('Campaign is not ready to start. Please deploy the contract first.');
+        }
+      } else {
+        if (campaign.status !== 'FUNDED' && campaign.status !== 'PAUSED') {
+          throw new Error('Solana campaign must be funded before starting.');
+        }
       }
 
       
@@ -656,5 +663,42 @@ export class CampaignService {
       console.error('Failed to get campaign details:', error);
       throw new Error('Campaign details retrieval failed');
     }
+  }
+
+  /**
+   * 重试失败的交易
+   */
+  async retryFailedTransactions(campaignId: string): Promise<void> {
+    try {
+      // 验证活动存在
+      const campaign = await this.getCampaignById(campaignId);
+      if (!campaign) {
+        throw new Error('活动不存在');
+      }
+
+      // 验证活动状态
+      if (campaign.status !== 'PAUSED') {
+        throw new Error('只能重试暂停状态的活动');
+      }
+
+      // 重置所有失败和待处理的接收者为待发送状态
+      const result = await this.db.prepare(`
+        UPDATE recipients
+        SET status = 'PENDING', tx_hash = NULL, gas_used = NULL, error_message = NULL, updated_at = ?
+        WHERE campaign_id = ? AND status IN ('FAILED', 'PENDING')
+      `).run(new Date().toISOString(), campaignId);
+
+      console.log(`重置了 ${result.changes} 个失败的接收者`);
+    } catch (error) {
+      console.error('Failed to retry failed transactions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 检查是否为Solana链
+   */
+  private isSolanaChain(chain: string): boolean {
+    return chain?.toLowerCase().includes('solana');
   }
 }

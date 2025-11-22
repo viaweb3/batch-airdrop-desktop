@@ -2,6 +2,7 @@ import { ContractService } from './ContractService';
 import { WalletService } from './WalletService';
 import { GasService } from './GasService';
 import { BlockchainService } from './BlockchainService';
+import { SolanaService } from './SolanaService';
 import type { DatabaseManager } from '../database/sqlite-schema';
 
 
@@ -27,6 +28,7 @@ export class CampaignExecutor {
   private walletService: WalletService;
   private gasService: GasService;
   private blockchainService: BlockchainService;
+  private solanaService: SolanaService;
   private executionMap: Map<string, boolean> = new Map(); // Track active executions
   private pauseMap: Map<string, boolean> = new Map(); // Track pause requests
 
@@ -36,6 +38,7 @@ export class CampaignExecutor {
     this.walletService = new WalletService();
     this.gasService = new GasService();
     this.blockchainService = new BlockchainService();
+    this.solanaService = new SolanaService();
   }
 
   /**
@@ -191,8 +194,20 @@ export class CampaignExecutor {
       // Get RPC URL based on chain
       const rpcUrl = this.getRpcUrlForChain(campaign.chain);
 
-      // Check if token approval is needed (EVM only)
-      if (!this.isSolanaChain(campaign.chain)) {
+      let result;
+
+      if (this.isSolanaChain(campaign.chain)) {
+        // Solana批量转账 - 直接转账，不需要授权和合约
+        result = await this.solanaService.batchTransfer(
+          rpcUrl,
+          wallet.privateKey,
+          addresses,
+          amounts,
+          campaign.tokenAddress
+        );
+      } else {
+        // EVM批量转账流程
+        // Check if token approval is needed
         const approvalNeeded = await this.contractService.checkApproval(
           rpcUrl,
           wallet.privateKey,
@@ -217,17 +232,17 @@ export class CampaignExecutor {
           // Wait for approval confirmation
           await this.waitForConfirmation(campaign.chain, approveTxHash, rpcUrl);
         }
-      }
 
-      // Execute batch transfer
-      const result = await this.contractService.batchTransfer(
-        campaign.contractAddress,
-        rpcUrl,
-        wallet.privateKey,
-        addresses,
-        amounts,
-        campaign.tokenAddress
-      );
+        // Execute batch transfer using contract
+        result = await this.contractService.batchTransfer(
+          campaign.contractAddress,
+          rpcUrl,
+          wallet.privateKey,
+          addresses,
+          amounts,
+          campaign.tokenAddress
+        );
+      }
 
       this.addAuditLog(campaignId, 'BATCH_SENT',
         `Batch ${batchNumber}/${totalBatches} sent. Tx: ${result.transactionHash}`);
@@ -241,7 +256,13 @@ export class CampaignExecutor {
       });
 
       // Update campaign gas costs
-      this.updateCampaignGasCost(campaignId, result.gasUsed);
+      if (this.isSolanaChain(campaign.chain)) {
+        // Solana gas费用以lamports为单位，需要转换为SOL
+        this.updateCampaignGasCost(campaignId, parseInt(result.gasUsed));
+      } else {
+        // EVM gas费用
+        this.updateCampaignGasCost(campaignId, result.gasUsed);
+      }
 
       this.addAuditLog(campaignId, 'BATCH_CONFIRMED',
         `Batch ${batchNumber}/${totalBatches} confirmed. Gas used: ${result.gasUsed}`);
@@ -375,25 +396,82 @@ export class CampaignExecutor {
     rpcUrl: string,
     maxAttempts: number = 60
   ): Promise<void> {
+    if (this.isSolanaChain(chain)) {
+      return await this.waitForSolanaConfirmation(txHash, rpcUrl);
+    } else {
+      return await this.waitForEVMConfirmation(txHash, rpcUrl, maxAttempts);
+    }
+  }
+
+  private async waitForSolanaConfirmation(
+    txHash: string,
+    rpcUrl: string
+  ): Promise<void> {
+    const maxWaitTime = 30000; // 30秒超时
+    const checkInterval = 1000; // 1秒检查一次
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitTime) {
+      try {
+        if (this.solanaService) {
+          const status = await this.solanaService.getTransactionStatus(rpcUrl, txHash);
+
+          if (status.status === 'confirmed') {
+            console.log(`Solana transaction confirmed: ${txHash}`);
+            return;
+          } else if (status.status === 'failed') {
+            throw new Error(`Solana transaction failed: ${status.error}`);
+          }
+        }
+
+        // 动态调整检查间隔 - 开始时更频繁，之后减少
+        const elapsed = Date.now() - startTime;
+        let nextWaitTime = checkInterval;
+
+        if (elapsed < 5000) {
+          nextWaitTime = 500; // 前5秒每0.5秒检查一次
+        } else if (elapsed < 15000) {
+          nextWaitTime = 1000; // 5-15秒每1秒检查一次
+        } else {
+          nextWaitTime = 2000; // 15秒后每2秒检查一次
+        }
+
+        await new Promise(resolve => setTimeout(resolve, nextWaitTime));
+      } catch (error) {
+        console.error(`Failed to check Solana transaction status:`, error);
+
+        // 网络错误时短暂等待后重试
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+
+    throw new Error(`Solana transaction confirmation timeout after ${maxWaitTime}ms`);
+  }
+
+  private async waitForEVMConfirmation(
+    txHash: string,
+    rpcUrl: string,
+    maxAttempts: number = 60
+  ): Promise<void> {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const status = await this.blockchainService.getTransactionStatus(chain, txHash, rpcUrl);
+        const status = await this.blockchainService.getTransactionStatus('ethereum', txHash, rpcUrl);
 
         if (status.status === 'confirmed') {
           return;
         }
 
-        // Wait 2 seconds before next check
+        // EVM交易确认较慢，使用更长的间隔
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
-        console.error(`Failed to check transaction status (attempt ${attempt + 1}):`, error);
+        console.error(`Failed to check EVM transaction status (attempt ${attempt + 1}):`, error);
 
         if (attempt === maxAttempts - 1) {
-          throw new Error('Transaction confirmation timeout');
+          throw new Error('EVM transaction confirmation timeout');
         }
       }
     }
 
-    throw new Error('Transaction confirmation timeout');
+    throw new Error('EVM transaction confirmation timeout');
   }
 }
