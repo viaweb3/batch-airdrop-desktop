@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { EVMChain } from '../types';
+import BigNumber from 'bignumber.js';
 
 interface Campaign {
   id: string;
@@ -9,7 +10,8 @@ interface Campaign {
   chainId: number;
   tokenAddress: string;
   tokenSymbol: string;
-  status: 'CREATED' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
+  tokenDecimals?: number;
+  status: 'CREATED' | 'FUNDED' | 'READY' | 'SENDING' | 'PAUSED' | 'COMPLETED' | 'FAILED';
   totalRecipients: number;
   completedRecipients: number;
   failedRecipients: number;
@@ -59,6 +61,7 @@ export default function CampaignDetail() {
     native: { current: '0', total: '0' },
     token: { current: '0', total: '0' }
   });
+  const [totalAirdropAmount, setTotalAirdropAmount] = useState<string>('0');
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const [showPrivateKeyModal, setShowPrivateKeyModal] = useState(false);
   const [exportedWallet, setExportedWallet] = useState<{ address: string; privateKey: string } | null>(null);
@@ -141,13 +144,20 @@ export default function CampaignDetail() {
         try {
           const recipientsData = await window.electronAPI.campaign.getRecipients(id);
           if (recipientsData && Array.isArray(recipientsData)) {
-            setRecipients(recipientsData.map((r: any) => ({
+            const mappedRecipients = recipientsData.map((r: any) => ({
               address: r.address,
               amount: r.amount,
               status: r.status === 'SENT' ? 'success' : r.status === 'PENDING' ? 'pending' : r.status === 'FAILED' ? 'failed' : 'sending',
               txHash: r.txHash,
               error: r.errorMessage,
-            })));
+            }));
+            setRecipients(mappedRecipients);
+
+            // Calculate total airdrop amount using BigNumber for precision
+            const total = recipientsData.reduce((sum: BigNumber, r: any) => {
+              return sum.plus(new BigNumber(r.amount || '0'));
+            }, new BigNumber(0));
+            setTotalAirdropAmount(total.toString());
           }
         } catch (recipientsError) {
           console.error('Failed to load recipients:', recipientsError);
@@ -162,6 +172,32 @@ export default function CampaignDetail() {
     }
   };
 
+  const loadRecipients = async () => {
+    try {
+      if (!id || !window.electronAPI?.campaign) return;
+
+      const recipientsData = await window.electronAPI.campaign.getRecipients(id);
+      if (recipientsData && Array.isArray(recipientsData)) {
+        const mappedRecipients = recipientsData.map((r: any) => ({
+          address: r.address,
+          amount: r.amount,
+          status: r.status === 'SENT' ? 'success' : r.status === 'PENDING' ? 'pending' : r.status === 'FAILED' ? 'failed' : 'sending',
+          txHash: r.txHash,
+          error: r.errorMessage,
+        }));
+        setRecipients(mappedRecipients);
+
+        // Recalculate total airdrop amount
+        const total = recipientsData.reduce((sum: BigNumber, r: any) => {
+          return sum.plus(new BigNumber(r.amount || '0'));
+        }, new BigNumber(0));
+        setTotalAirdropAmount(total.toString());
+      }
+    } catch (error) {
+      console.error('Failed to load recipients:', error);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'COMPLETED':
@@ -172,6 +208,10 @@ export default function CampaignDetail() {
         return <div className="badge badge-warning gap-1">⏸️ 暂停</div>;
       case 'FAILED':
         return <div className="badge badge-error gap-1">❌ 失败</div>;
+      case 'READY':
+        return <div className="badge badge-accent gap-1">⚡ 就绪</div>;
+      case 'FUNDED':
+        return <div className="badge badge-info gap-1">💰 已充值</div>;
       default:
         return <div className="badge badge-neutral gap-1">📋 创建</div>;
     }
@@ -183,6 +223,8 @@ export default function CampaignDetail() {
       case 'SENDING': return 'bg-blue-100 text-blue-800';
       case 'PAUSED': return 'bg-orange-100 text-orange-800';
       case 'FAILED': return 'bg-red-100 text-red-800';
+      case 'READY': return 'bg-purple-100 text-purple-800';
+      case 'FUNDED': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -210,15 +252,55 @@ export default function CampaignDetail() {
     }
   };
 
-  const handleDeployContract = async () => {
+  const handleStartCampaign = async () => {
     if (!campaign || !id) return;
 
-    // 检查余额是否足够
-    const nativeBalance = parseFloat(walletBalances.native.current);
-    const tokenBalance = parseFloat(walletBalances.token.current);
+    // 确认对话框
+    const confirmed = confirm(`确认开始发送代币吗？\n\n活动名称: ${campaign.name}\n发送数量: ${campaign.totalRecipients - campaign.completedRecipients - campaign.failedRecipients} 个接收者\n\n点击"确定"开始执行批量发送。`);
 
-    if (nativeBalance < 0.01) { // 假设部署合约至少需要0.01 ETH
-      setDeploymentError('Gas余额不足，请确保钱包有足够的原生代币来支付部署费用');
+    if (!confirmed) {
+      return; // 用户取消了
+    }
+
+    try {
+      if (window.electronAPI?.campaign) {
+        console.log('Starting campaign:', id);
+        await window.electronAPI.campaign.start(id);
+        console.log('Campaign started successfully');
+
+        // 成功启动后重新加载活动状态
+        await loadCampaign();
+        alert('活动已开始发送！页面将每5秒自动刷新状态。');
+      }
+    } catch (error) {
+      console.error('Failed to start campaign:', error);
+      alert('启动失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    }
+  };
+
+  const handleDeployContract = async () => {
+    if (!campaign || !id || !campaign.walletAddress || !campaign.chain) return;
+
+    // 先获取最新余额
+    try {
+      const freshBalance = await window.electronAPI.wallet.getBalance(
+        campaign.walletAddress,
+        campaign.chain
+      );
+
+      const nativeBalance = parseFloat(freshBalance.native || '0');
+
+      // 合约部署实际使用约364,571 gas (gas limit 500,000)
+      // 按20 gwei计算约0.01 ETH，设置最低要求为0.0015 ETH以包含缓冲
+      const minGasRequired = 0.0015;
+      if (nativeBalance < minGasRequired) {
+        setDeploymentError(`Gas余额不足，请确保钱包有至少 ${minGasRequired} ETH 来支付部署费用。当前余额: ${nativeBalance.toFixed(6)} ETH`);
+        setShowDeploymentModal(true);
+        return;
+      }
+    } catch (balanceError) {
+      console.error('Failed to check balance before deployment:', balanceError);
+      setDeploymentError('无法获取余额信息，请稍后重试');
       setShowDeploymentModal(true);
       return;
     }
@@ -650,6 +732,16 @@ export default function CampaignDetail() {
     }
   }, [campaign?.walletAddress, campaign?.status, campaign?.chain]);
 
+  // Auto-refresh campaign data every 5 seconds when sending
+  useEffect(() => {
+    if (campaign?.status === 'SENDING') {
+      const interval = setInterval(() => {
+        loadCampaign();
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [campaign?.status, id]);
+
   
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('zh-CN', {
@@ -661,7 +753,7 @@ export default function CampaignDetail() {
     });
   };
 
-  if (loading) {
+  if (loading && (!campaign || campaign.status !== 'COMPLETED')) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <span className="loading loading-spinner loading-lg"></span>
@@ -703,7 +795,15 @@ export default function CampaignDetail() {
           )}
           {campaign && campaign.status === 'FUNDED' && isSolanaChain(campaign.chain) && (
             <button
-              onClick={() => navigate(`/campaign/${id}/start`)}
+              onClick={handleStartCampaign}
+              className="btn btn-success"
+            >
+                🚀 开始发送
+            </button>
+          )}
+          {campaign && campaign.status === 'READY' && !isSolanaChain(campaign.chain) && (
+            <button
+              onClick={handleStartCampaign}
               className="btn btn-success"
             >
                 🚀 开始发送
@@ -837,6 +937,15 @@ export default function CampaignDetail() {
                         );
                       }
                     })()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-base-content/70">空投总量:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-primary">
+                      {parseFloat(totalAirdropAmount).toLocaleString()}
+                    </span>
+                    <span className="text-sm text-base-content/70">{campaign.tokenSymbol || 'tokens'}</span>
                   </div>
                 </div>
               </div>

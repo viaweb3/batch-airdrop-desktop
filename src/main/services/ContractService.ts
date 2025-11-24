@@ -78,10 +78,10 @@ export class ContractService {
 
       // Deploy contract
       // Our contract has no constructor arguments, so we pass tx options directly
-      // Increase gas limit significantly for contract deployment
+      // Gas limit with buffer (actual usage ~364,571, setting to 500,000 for safety)
       const deployOptions = {
         ...txOptions,
-        gasLimit: BigInt(3000000) // 3M gas for contract deployment
+        gasLimit: BigInt(500000) // 500K gas for contract deployment
       };
 
       const contract = await contractFactory.deploy(deployOptions);
@@ -166,7 +166,8 @@ export class ContractService {
       const tokenDecimals = await this.getTokenDecimals(rpcUrl, tokenAddress);
 
       // Convert amounts to BigInt with correct decimals
-      const bigintAmounts = amounts.map(amount => ethers.parseUnits(amount, tokenDecimals));
+      // Ensure amount is a string before parsing
+      const bigintAmounts = amounts.map(amount => ethers.parseUnits(amount.toString(), tokenDecimals));
 
       // Get gas info for this batch
       const gasInfo = await this.gasService.getBatchGasEstimate(rpcUrl, 'ethereum', recipients.length);

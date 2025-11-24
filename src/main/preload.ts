@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     create: (data: any) => ipcRenderer.invoke('campaign:create', data),
     list: (filters?: any) => ipcRenderer.invoke('campaign:list', filters),
     getById: (id: string) => ipcRenderer.invoke('campaign:getById', id),
-    start: (id: string) => ipcRenderer.invoke('campaign:start', id),
+    start: (id: string, password?: string, batchSize?: number) => ipcRenderer.invoke('campaign:start', id, password, batchSize),
     pause: (id: string) => ipcRenderer.invoke('campaign:pause', id),
     resume: (id: string) => ipcRenderer.invoke('campaign:resume', id),
     getDetails: (id: string) => ipcRenderer.invoke('campaign:getDetails', id),

@@ -79,11 +79,11 @@ export class SolanaService {
       const tokenMint = new PublicKey(tokenAddress);
       const tokenInfo = await connection.getParsedAccountInfo(tokenMint);
 
-      if (!tokenInfo || tokenInfo.owner !== TOKEN_PROGRAM_ID) {
+      if (!tokenInfo || !tokenInfo.value) {
         throw new Error('Invalid token address');
       }
 
-      const parsedInfo = tokenInfo.data as any;
+      const parsedInfo = tokenInfo.value.data as any;
       const decimals = parsedInfo.parsed.info.decimals;
 
       return {
@@ -381,7 +381,7 @@ export class SolanaService {
           return {
             status: 'failed',
             error: `Transaction failed: ${JSON.stringify(transaction.meta.err)}`,
-            blockHeight: transaction.blockHeight || undefined
+            blockHeight: (transaction as any).blockHeight || undefined
           };
         }
 
@@ -390,7 +390,7 @@ export class SolanaService {
 
         return {
           status: 'confirmed',
-          blockHeight: transaction.blockHeight || undefined,
+          blockHeight: (transaction as any).blockHeight || undefined,
           confirmations
         };
       } catch (error) {

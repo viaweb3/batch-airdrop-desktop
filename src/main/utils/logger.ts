@@ -60,7 +60,7 @@ export class Logger {
     };
 
     this.sessionId = this.generateSessionId();
-    this.logFilePath = path.join(this.config.logDirectory, `cryptocast-${this.getDateString()}.log`);
+    this.logFilePath = path.join(this.config.logDirectory || '', `cryptocast-${this.getDateString()}.log`);
 
     // 确保日志目录存在
     this.ensureLogDirectory();

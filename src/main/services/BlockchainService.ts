@@ -68,24 +68,52 @@ export class BlockchainService {
     tokenDecimals?: number,
     rpcUrl?: string
   ): Promise<BalanceData> {
-    const provider = new ethers.JsonRpcProvider(rpcUrl || this.getDefaultRPC(chain));
+    const effectiveRpcUrl = rpcUrl || this.getDefaultRPC(chain);
+    console.log(`[BlockchainService] Getting EVM balance for ${address} on chain ${chain}, token: ${tokenAddress}, decimals: ${tokenDecimals}, RPC: ${effectiveRpcUrl}`);
+
+    const provider = new ethers.JsonRpcProvider(effectiveRpcUrl);
 
     // 获取原生代币余额
     const nativeBalance = await provider.getBalance(address);
+    console.log(`[BlockchainService] Native balance: ${ethers.formatEther(nativeBalance)} ETH`);
 
     let tokenBalance: string | undefined;
-    if (tokenAddress && tokenDecimals !== undefined) {
+    console.log(`[BlockchainService] Checking token balance. tokenAddress: "${tokenAddress}", tokenDecimals: ${tokenDecimals}, typeof tokenAddress: ${typeof tokenAddress}`);
+
+    if (tokenAddress && tokenAddress !== '0x0000000000000000000000000000000000000000') {
       try {
-        // ERC20 ABI (只需要balanceOf，不需要查询decimals)
-        const erc20Abi = [
-          'function balanceOf(address owner) view returns (uint256)'
-        ];
+        console.log(`[BlockchainService] Attempting to fetch token balance for ${tokenAddress}`);
 
-        const contract = new ethers.Contract(tokenAddress, erc20Abi, provider);
+        // If tokenDecimals is not provided, fetch it dynamically
+        if (tokenDecimals === undefined) {
+          console.log(`[BlockchainService] Token decimals not provided, fetching from contract for ${tokenAddress}`);
+          const erc20Abi = [
+            'function balanceOf(address owner) view returns (uint256)',
+            'function decimals() view returns (uint8)'
+          ];
 
-        // 直接使用已知的精度查询余额
-        const balance = await contract.balanceOf(address);
-        tokenBalance = ethers.formatUnits(balance, tokenDecimals);
+          const contract = new ethers.Contract(tokenAddress, erc20Abi, provider);
+
+          // Fetch both balance and decimals in parallel
+          const [balance, decimals] = await Promise.all([
+            contract.balanceOf(address),
+            contract.decimals()
+          ]);
+
+          tokenBalance = ethers.formatUnits(balance, Number(decimals));
+          console.log(`[BlockchainService] Token balance fetched: ${tokenBalance} (decimals: ${decimals})`);
+        } else {
+          // Use provided decimals
+          console.log(`[BlockchainService] Using provided decimals: ${tokenDecimals}`);
+          const erc20Abi = [
+            'function balanceOf(address owner) view returns (uint256)'
+          ];
+
+          const contract = new ethers.Contract(tokenAddress, erc20Abi, provider);
+          const balance = await contract.balanceOf(address);
+          tokenBalance = ethers.formatUnits(balance, tokenDecimals);
+          console.log(`[BlockchainService] Token balance fetched: ${tokenBalance} (using provided decimals: ${tokenDecimals})`);
+        }
 
       } catch (error) {
         console.error('Failed to get token balance:', {
@@ -97,6 +125,8 @@ export class BlockchainService {
         });
         tokenBalance = '0';
       }
+    } else {
+      console.log(`[BlockchainService] No token address provided or is zero address, skipping token balance query`);
     }
 
     return {
@@ -237,15 +267,15 @@ export class BlockchainService {
         ? new Connection(rpcUrl, 'confirmed')
         : new Connection('https://solana-rpc.publicnode.com', 'confirmed');
 
-      // 获取最新的区块哈希和费用信息
-      const { blockhash, lastValidBlockHeight, feeCalculator } = await connection.getLatestBlockhashAndFees();
+      // 获取最新的区块哈希
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
 
-      // 基础签名费用
-      const baseFeePerSignature = BigInt(feeCalculator?.value?.lamportsPerSignature || 5000);
+      // 基础签名费用 (Solana 默认值)
+      const baseFeePerSignature = BigInt(5000);
 
       // Solana交易的典型组件费用估算
       const computeUnitsPerInstruction = 200000; // 典型的compute unit限制
-      const computeUnitPrice = BigInt(feeCalculator?.value?.computeUnitPrice || 0);
+      const computeUnitPrice = BigInt(0); // 默认为0
 
       // 对于批量转账，每个交易包含多个指令
       const instructionsPerTransfer = 5; // 转账 + 可能的账户创建 + 其他指令
@@ -257,7 +287,7 @@ export class BlockchainService {
       const signatureFees = baseFeePerSignature * BigInt(transactionCount + 1); // +1 for payer signature
 
       // SPL转账的额外费用（创建关联账户等）
-      const splAccountCreationFee = BigInt('2039280') * Math.min(transactionCount, Math.floor(transactionCount * 0.3)); // 假设30%需要创建账户
+      const splAccountCreationFee = BigInt('2039280') * BigInt(Math.min(transactionCount, Math.floor(transactionCount * 0.3))); // 假设30%需要创建账户
 
       const totalLamports = computeFee + signatureFees + splAccountCreationFee;
       const solCost = totalLamports / BigInt(LAMPORTS_PER_SOL);
@@ -311,34 +341,54 @@ export class BlockchainService {
     try {
       if (this.databaseManager) {
         const db = this.databaseManager.getDatabase();
-        const chainData = db.prepare(
-          'SELECT rpc_url FROM evm_chains WHERE name = ? OR type = ?'
-        ).get(chain, chain.toLowerCase());
+
+        // 首先尝试按名称或类型查询
+        let chainData = db.prepare(
+          'SELECT rpc_url FROM chains WHERE name = ? OR type = ? LIMIT 1'
+        ).get(chain, chain.toLowerCase()) as { rpc_url?: string } | undefined;
+
+        // 如果没有找到，尝试按 chain_id 查询（适用于传入的是数字字符串的情况）
+        if (!chainData || !chainData.rpc_url) {
+          chainData = db.prepare(
+            'SELECT rpc_url FROM chains WHERE chain_id = ? LIMIT 1'
+          ).get(chain) as { rpc_url?: string } | undefined;
+        }
 
         if (chainData && chainData.rpc_url) {
+          console.log(`[BlockchainService] Found RPC URL from database for chain ${chain}: ${chainData.rpc_url}`);
           return chainData.rpc_url;
         }
       }
     } catch (error) {
-      console.warn('Failed to get RPC URL from database:', error);
+      console.warn('[BlockchainService] Failed to get RPC URL from database:', error);
     }
 
     // Fallback RPC URLs
     const rpcMap: { [key: string]: string } = {
       // 主网
+      '1': 'https://eth.llamarpc.com',
       'ethereum': 'https://eth.llamarpc.com',
+      '137': 'https://polygon.llamarpc.com',
       'polygon': 'https://polygon.llamarpc.com',
+      '42161': 'https://arbitrum.llamarpc.com',
       'arbitrum': 'https://arbitrum.llamarpc.com',
+      '10': 'https://optimism.llamarpc.com',
       'optimism': 'https://optimism.llamarpc.com',
+      '8453': 'https://base.llamarpc.com',
       'base': 'https://base.llamarpc.com',
+      '56': 'https://bsc.llamarpc.com',
       'bsc': 'https://bsc.llamarpc.com',
+      '43114': 'https://avalanche.llamarpc.com',
       'avalanche': 'https://avalanche.llamarpc.com',
       // 测试网
+      '11155111': 'https://ethereum-sepolia-rpc.publicnode.com',
       'ethereum sepolia testnet': 'https://ethereum-sepolia-rpc.publicnode.com',
       'sepolia': 'https://ethereum-sepolia-rpc.publicnode.com',
     };
 
-    return rpcMap[chain.toLowerCase()] || rpcMap['ethereum'];
+    const rpcUrl = rpcMap[chain.toLowerCase()] || rpcMap[chain] || rpcMap['ethereum'];
+    console.log(`[BlockchainService] Using fallback RPC URL for chain ${chain}: ${rpcUrl}`);
+    return rpcUrl;
   }
 
   private async getETHPriceUSD(): Promise<number> {

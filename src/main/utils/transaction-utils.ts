@@ -190,7 +190,7 @@ export class TransactionUtils {
     const normalizedChain = ChainUtils.normalizeChainIdentifier(chain);
 
     if (ChainUtils.isSolanaChain(chain)) {
-      return this.NETWORK_CONFIGS[normalizedChain] || this.NETWORK_CONFIGS['solana-mainnet-beta'];
+      return this.NETWORK_CONFIGS[normalizedChain as keyof typeof this.NETWORK_CONFIGS] || this.NETWORK_CONFIGS['solana-mainnet-beta'];
     }
 
     // EVM链的配置映射

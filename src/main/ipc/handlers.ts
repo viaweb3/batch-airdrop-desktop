@@ -115,11 +115,14 @@ export async function setupIPCHandlers() {
 
   ipcMain.handle('campaign:start', async (_event, id, password, batchSize) => {
     try {
-      console.log('开始活动:', id);
-      const result = await campaignService.startCampaign(id, password, batchSize);
+      console.log('[IPC] campaign:start called for campaign:', id);
+
+      // 注意：password参数保持但不再使用，私钥直接从数据库获取
+      const result = await campaignService.startCampaign(id, '', batchSize);
+      console.log('[IPC] campaign:start success:', result);
       return result;
     } catch (error) {
-      console.error('开始活动失败:', error);
+      console.error('[IPC] campaign:start failed:', error);
       throw new Error(`开始活动失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   });
@@ -481,7 +484,7 @@ export async function setupIPCHandlers() {
         throw new Error('PriceService not initialized');
       }
       const prices = await priceService.getPricesForSymbols(symbols);
-      console.log('[IPC] price:getPrices success, returning', Object.keys(prices).length, 'prices');
+      console.log('[IPC] price:getPrices success, returning prices:', prices);
       return prices;
     } catch (error) {
       console.error('[IPC] price:getPrices failed:', error);
@@ -587,7 +590,18 @@ export async function setupIPCHandlers() {
 
         const contractInfo = await contractService.deployContract(config);
 
-        // 5. 更新活动信息（包含状态验证）
+        // 5. 记录部署交易
+        await campaignService.recordTransaction(campaignId, {
+          txHash: contractInfo.transactionHash,
+          txType: 'DEPLOY_CONTRACT',
+          fromAddress: campaign.walletAddress || '',
+          toAddress: contractInfo.contractAddress,
+          gasUsed: parseFloat(contractInfo.gasUsed || '0'),
+          status: 'CONFIRMED',
+          blockNumber: contractInfo.blockNumber
+        });
+
+        // 6. 更新活动信息（包含状态验证）
         await campaignService.updateCampaignContract(
           campaignId,
           contractInfo.contractAddress,

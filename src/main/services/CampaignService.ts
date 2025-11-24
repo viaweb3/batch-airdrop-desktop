@@ -159,7 +159,7 @@ export class CampaignService {
       }
       return campaign;
     } catch (error) {
-      logger.error('[CampaignService] Campaign creation failed', error, {
+      logger.error('[CampaignService] Campaign creation failed', error as Error, {
       campaignId: id,
       name: data.name,
       chain: data.chain
@@ -231,7 +231,8 @@ export class CampaignService {
   }
 
   private mapRowToCampaign(row: any): Campaign {
-    return {
+    console.log('[CampaignService] mapRowToCampaign: token_decimals from database:', row.token_decimals);
+    const campaign = {
       id: row.id,
       name: row.name,
       description: row.description,
@@ -239,6 +240,7 @@ export class CampaignService {
       chain: row.chain || (row.chain_type === 'evm' ? row.chain_id?.toString() : row.network),
       tokenAddress: row.token_address,
       tokenSymbol: row.token_symbol,
+      tokenDecimals: row.token_decimals || 18,
       status: row.status,
       totalRecipients: row.total_recipients,
       completedRecipients: row.completed_recipients,
@@ -255,6 +257,8 @@ export class CampaignService {
       updatedAt: row.updated_at,
       completedAt: row.completed_at,
     };
+    console.log('[CampaignService] mapRowToCampaign: campaign.tokenDecimals:', campaign.tokenDecimals);
+    return campaign;
   }
 
   async updateCampaignStatus(id: string, status: Campaign['status']): Promise<void> {
@@ -568,6 +572,81 @@ export class CampaignService {
     } catch (error) {
       console.error('Failed to get campaign transactions:', error);
       return []; // Return empty array instead of throwing error
+    }
+  }
+
+  /**
+   * 记录交易
+   */
+  async recordTransaction(campaignId: string, transactionData: {
+    txHash: string;
+    txType: 'DEPLOY_CONTRACT' | 'TRANSFER_TO_CONTRACT' | 'APPROVE_TOKENS' | 'BATCH_SEND' | 'WITHDRAW_REMAINING';
+    fromAddress: string;
+    toAddress?: string;
+    amount?: string;
+    gasUsed?: number;
+    gasPrice?: string;
+    gasCost?: number;
+    status?: 'PENDING' | 'CONFIRMED' | 'FAILED';
+    blockNumber?: number;
+    blockHash?: string;
+  }): Promise<void> {
+    try {
+      await this.db.prepare(`
+        INSERT OR REPLACE INTO transactions (
+          campaign_id, tx_hash, tx_type, from_address, to_address, amount,
+          gas_used, gas_price, gas_cost, status, block_number, block_hash, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        campaignId,
+        transactionData.txHash,
+        transactionData.txType,
+        transactionData.fromAddress,
+        transactionData.toAddress || null,
+        transactionData.amount || null,
+        transactionData.gasUsed || 0,
+        transactionData.gasPrice || null,
+        transactionData.gasCost || 0,
+        transactionData.status || 'PENDING',
+        transactionData.blockNumber || null,
+        transactionData.blockHash || null,
+        new Date().toISOString()
+      );
+
+      console.log(`Transaction recorded: ${transactionData.txType} - ${transactionData.txHash}`);
+    } catch (error) {
+      console.error('Failed to record transaction:', error);
+      // Don't throw error - recording transaction failure shouldn't break the main flow
+    }
+  }
+
+  /**
+   * 更新交易状态
+   */
+  async updateTransactionStatus(txHash: string, status: 'PENDING' | 'CONFIRMED' | 'FAILED', blockNumber?: number, blockHash?: string): Promise<void> {
+    try {
+      const updates: any[] = [status, new Date().toISOString(), txHash];
+      let query = `
+        UPDATE transactions
+        SET status = ?, confirmed_at = ?
+      `;
+
+      if (blockNumber) {
+        query += `, block_number = ?`;
+        updates.splice(-1, 0, blockNumber); // Insert before txHash
+      }
+
+      if (blockHash) {
+        query += `, block_hash = ?`;
+        updates.splice(-1, 0, blockHash); // Insert before txHash
+      }
+
+      query += ` WHERE tx_hash = ?`;
+
+      await this.db.prepare(query).run(...updates);
+      console.log(`Transaction status updated: ${txHash} -> ${status}`);
+    } catch (error) {
+      console.error('Failed to update transaction status:', error);
     }
   }
 

@@ -33,6 +33,7 @@
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.0",
     "axios": "^1.7.9",
+    "bignumber.js": "^9.3.1",
     "csv-parse": "^6.1.0",
     "csv-stringify": "^6.6.0",
     "electron-updater": "^6.3.9",

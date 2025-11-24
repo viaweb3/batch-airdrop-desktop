@@ -29,7 +29,9 @@ export default function Layout({ children }: LayoutProps) {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
+        console.log('[Layout] Fetching prices...');
         const prices = await electronAPI.price.getPrices(['ETH', 'BNB', 'POL', 'AVAX', 'SOL']);
+        console.log('[Layout] Received prices:', prices);
         setPriceInfo({
           eth: prices.ETH || 0,
           bnb: prices.BNB || 0,
@@ -37,8 +39,9 @@ export default function Layout({ children }: LayoutProps) {
           avax: prices.AVAX || 0,
           sol: prices.SOL || 0
         });
+        console.log('[Layout] Updated priceInfo state');
       } catch (error) {
-        console.error('Failed to fetch prices:', error);
+        console.error('[Layout] Failed to fetch prices:', error);
       }
     };
 

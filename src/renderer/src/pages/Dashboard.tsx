@@ -124,7 +124,7 @@ export default function Dashboard() {
   const stats: DashboardStats = {
     totalActivities: state.campaigns.length,
     successfulActivities: state.campaigns.filter(c => c.status === 'COMPLETED').length,
-    ongoingActivities: state.campaigns.filter(c => ['SENDING', 'READY'].includes(c.status)).length,
+    ongoingActivities: state.campaigns.filter(c => ['SENDING', 'PAUSED'].includes(c.status)).length,
     totalRecipients: state.campaigns.reduce((sum, c) => sum + c.totalRecipients, 0),
     completedRecipients: state.campaigns.reduce((sum, c) => sum + c.completedRecipients, 0),
     weeklyActivities: state.campaigns.filter(c => {
