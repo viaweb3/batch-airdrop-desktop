@@ -50,8 +50,11 @@ jobs:
     - name: Rebuild native modules
       run: npm rebuild
 
+    - name: Extract version from tag
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
     - name: Build application
-      run: npm run ${{ matrix.build-script }}
+      run: npm run ${{ matrix.build-script }} -- --publish=never
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -62,71 +65,6 @@ jobs:
         path: release/
         retention-days: 30
 
-
-  build-signed:
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            platform: darwin
-            arch: x64
-            build-script: build:mac-intel
-          - os: macos-latest
-            platform: darwin
-            arch: arm64
-            build-script: build:mac-arm
-          - os: windows-latest
-            platform: win32
-            arch: x64
-            build-script: build:win
-
-    runs-on: ${{ matrix.os }}
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-        cache: 'npm'
-
-    - name: Setup Python (for node-gyp)
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
-
-    - name: Install dependencies
-      run: npm ci
-      env:
-        ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-
-    - name: Rebuild native modules
-      run: npm rebuild
-
-    - name: Extract version from tag
-      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-
-    - name: Build and sign macOS
-      if: matrix.platform == 'darwin'
-      run: npm run ${{ matrix.build-script }} -- --publish=never
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        CSC_LINK: ${{ secrets.CSC_LINK_MAC }}
-        CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD_MAC }}
-        APPLE_ID: ${{ secrets.APPLE_ID }}
-        APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-
-    - name: Build and sign Windows
-      if: matrix.platform == 'win32'
-      run: npm run ${{ matrix.build-script }} -- --publish=never
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        CSC_LINK: ${{ secrets.CSC_LINK_WIN }}
-        CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD_WIN }}
-
     - name: Rename artifacts with version
       run: |
         find release/ -name "*" -type f | while read file; do
@@ -136,14 +74,8 @@ jobs:
           fi
         done
 
-    - name: Upload signed artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-signed-${{ matrix.platform }}-${{ matrix.arch }}
-        path: release/
-        retention-days: 90
-
-    - name: Upload signed artifacts to release
+    - name: Upload artifacts to release
+      if: matrix.platform == 'darwin' && matrix.arch == 'x64'  # Only run once for the first matrix build
       uses: softprops/action-gh-release@v1
       with:
         files: release/*
@@ -155,13 +87,13 @@ jobs:
           Auto-generated release from GitHub Actions.
 
           ### 📦 Downloads
-          - **Windows**: `CryptoCast-Setup-${{ github.ref_name }}.exe`
+          - **Windows**: `CryptoCast-${{ github.ref_name }}-Setup.exe`
           - **macOS Intel**: `CryptoCast-${{ github.ref_name }}-x64.dmg`
           - **macOS Apple Silicon**: `CryptoCast-${{ github.ref_name }}-arm64.dmg`
           - **Linux**: `CryptoCast-${{ github.ref_name }}.AppImage`
 
-          ### 🔐 Verified Builds
-          All builds are automatically signed and verified.
+          ### ⚠️ Unsigned Builds
+          These builds are unsigned for development and testing purposes.
 
           ---
           *Built with ❤️ by GitHub Actions*
@@ -169,3 +101,6 @@ jobs:
         prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+  
