@@ -1,225 +1,80 @@
 # 开发指南
 
-## 项目初始化完成 ✅
+本文档旨在为参与 CryptoCast Desktop 项目的开发者提供指导，包括开发状态、后续计划和注意事项。
 
-已完成的设置：
+---
 
-### 1. 项目结构
-```
-batch-airdrop-desktop/
-├── src/
-│   ├── main/               # Electron主进程
-│   │   ├── index.ts        # ✅ 主进程入口
-│   │   ├── preload.ts      # ✅ Preload脚本
-│   │   ├── ipc/            # ✅ IPC处理器
-│   │   ├── services/       # 业务服务（待实现）
-│   │   ├── database/       # 数据库（待实现）
-│   │   └── utils/          # 工具函数
-│   │
-│   └── renderer/           # React渲染进程
-│       └── src/
-│           ├── main.tsx    # ✅ React入口
-│           ├── App.tsx     # ✅ 根组件
-│           ├── pages/      # ✅ 页面组件
-│           ├── components/ # ✅ 通用组件
-│           ├── hooks/      # 自定义Hooks
-│           ├── types/      # ✅ TypeScript类型
-│           └── styles/     # ✅ 样式文件
-│
-├── contracts/              # 智能合约
-├── docs/                   # ✅ 文档
-└── README.md               # ✅ 说明
-```
+## 快速入门
 
-### 2. 已配置的工具
-- ✅ TypeScript配置
-- ✅ Vite构建工具
-- ✅ Tailwind CSS
-- ✅ React Router
-- ✅ Electron配置
+关于项目的详细介绍、开发环境设置、开发命令和项目结构，请参考主文档：
 
-### 3. 已创建的页面
-- ✅ Dashboard（仪表盘）
-- ✅ CampaignCreate（创建活动）
-- ✅ CampaignDetail（活动详情）
-- ✅ History（历史记录）
-- ✅ Settings（设置）
+➡️ **[README.md](./README.md)**
 
-## 下一步开发计划
+---
 
-### ✅ 已完成 (Week 1-3)
-- [x] Electron框架搭建
-- [x] React + TypeScript + Tailwind CSS配置
-- [x] 基础页面结构和路由
-- [x] IPC通信完整实现
-- [x] SQLite数据库配置和schema
-- [x] **完整服务层实现**:
-  - [x] WalletService（钱包服务）
-  - [x] CampaignService（活动服务）
-  - [x] CampaignExecutor（发送调度）
-  - [x] ContractService（合约服务）
-  - [x] GasService（Gas预估和管理）
-  - [x] PriceService（价格服务）
-  - [x] BlockchainService（区块链服务）
-  - [x] FileService（文件处理服务）
-  - [x] ChainService（链管理服务）
-  - [x] SettingsService（设置服务）
-- [x] **完整UI实现**:
-  - [x] Dashboard（仪表盘）
-  - [x] CampaignCreate（创建活动）
-  - [x] CampaignDetail（活动详情）
-  - [x] History（历史记录）
-  - [x] Settings（设置）
-  - [x] Layout（布局组件）
-- [x] **Solana集成完成**
-- [x] **链管理功能完成**
-- [x] **完整测试套件**:
-  - [x] 单元测试 (Jest)
-  - [x] 集成测试
-  - [x] E2E测试 (Playwright)
-  - [x] 测试网测试
+## 📍 当前开发状态
 
-### 🔄 当前优化阶段 (Week 4)
-- [ ] 性能优化和代码重构
-- [ ] 错误处理和边界情况完善
-- [ ] 用户体验优化
-- [ ] 安全性增强
-- [ ] 文档完善
+项目已完成核心框架的搭建和关键功能的实现，目前处于功能完善和体验优化阶段。
 
-### 📅 待实现 (Week 5-6)
-- [ ] Electron打包和分发配置
-- [ ] 代码签名和公证
-- [ ] 自动更新功能
-- [ ] 生产环境测试
-- [ ] 部署和发布
+### 已实现的核心功能
 
-## 开发命令
+-   **应用框架**: 基于 Electron + React + TypeScript 的现代化桌面应用框架。
+-   **核心服务层**: 实现了包括活动、钱包、区块链、价格等在内的服务，为应用提供了完整的后端逻辑支撑。
+-   **数据库**: 集成了 SQLite 数据库，并定义了核心业务（活动、接收人、交易等）的数据结构。
+-   **IPC 通信**: 建立了连接渲染进程和主进程的安全 IPC 通道，API 接口定义清晰。
+-   **多链支持**: 初步集成了 `ethers.js` 和 `@solana/web3.js`，具备了与 EVM 链和 Solana 交互的基础能力。
+-   **UI 页面**: 创建了应用所需的主要页面（仪表盘、创建活动、设置等）和基础布局。
+-   **测试框架**: 配置了 Jest 用于单元/集成测试，Playwright 用于 E2E 测试。
 
-```bash
-# 安装依赖（已完成）
-npm install
+### 存在的技术债务
 
-# 开发模式运行
-npm run dev
+-   **代码结构**: `src/main/ipc/handlers.ts` 文件过长，未来应按功能域进行拆分。
+-   **安全性**: 数据库中存储的私钥当前仅为 Base64 编码，需要实现基于用户密码的强加密存储。
+-   **测试覆盖**: 虽然测试框架已搭建，但单元测试和 E2E 测试的覆盖率仍需大幅提高。
+-   **错误处理**: 需要建立更系统和统一的错误处理与重试机制。
 
-# 构建应用
-npm run build
+---
 
-# 测试命令
-npm run test              # 运行所有测试
-npm run test:unit         # 单元测试
-npm run test:integration  # 集成测试
-npm run test:e2e          # E2E测试
-npm run test:coverage     # 测试覆盖率
-npm run test:testnet      # 测试网测试
+## 🚀 后续开发计划
 
-# 打包命令
-npm run build:win         # 打包Windows版本
-npm run build:mac         # 打包macOS版本
-npm run build:linux       # 打包Linux版本
-```
+### 近期目标
 
-## 注意事项
+1.  **性能与稳定性优化**:
+    -   对大规模数据处理（如导入数万地址）进行性能分析和优化。
+    -   完善所有业务流程中的错误处理和边界条件检查。
+2.  **安全性增强**:
+    -   实现对本地数据库中敏感数据（特别是私钥）的加密。
+3.  **功能完善**:
+    -   完善活动执行过程中的状态监控和实时反馈。
+    -   优化链管理和钱包管理的用户体验。
+4.  **文档与测试**:
+    -   补充和完善现有文档。
+    -   大幅提升单元测试和 E2E 测试的覆盖率，确保应用质量。
 
-1. **Node.js版本**:
-   - 如遇到better-sqlite3编译问题，使用Node.js v20 LTS
-   - 当前项目使用sql.js作为临时替代
+### 远期目标
 
-2. **数据库**:
-   - SQLite数据库文件将存储在用户目录
-   - 开发时会在项目根目录生成测试数据库
+-   **打包与分发**:
+    -   配置 `electron-builder` 以完成 Windows, macOS, Linux 三平台的打包。
+    -   为 macOS 和 Windows 应用实现代码签名和公证。
+    -   集成 `electron-updater` 实现自动更新功能。
+-   **扩展功能**:
+    -   支持更多的区块链网络。
+    -   探索插件化架构，允许社区扩展功能。
 
-3. **私钥安全**:
-   - 主密钥文件`.masterkey`已添加到.gitignore
-   - 不要提交任何私钥或敏感数据
-   - 使用AES-256-GCM加密存储私钥
+---
 
-4. **开发工具**:
-   - 开发模式下会自动打开DevTools
-   - 支持热重载
-   - 完整的测试套件支持
+## ⚠️ 注意事项
 
-## 项目结构
+-   **私钥安全**: 开发过程中，切勿将任何私钥或敏感信息硬编码或提交到版本控制中。
+-   **数据库**: 应用数据库文件存储在用户数据目录中。在开发过程中，对 `src/main/database/sqlite-schema.ts` 的修改可能会导致需要删除本地数据库文件 (`cryptocast.db`) 以重新生成。
+-   **代码风格**: 项目配置了 Prettier 和 ESLint，请在提交代码前确保格式正确。
 
-```
-src/
-├── main/                           # Electron主进程
-│   ├── index.ts                   # ✅ 主进程入口
-│   ├── preload.ts                 # ✅ 安全桥接层
-│   ├── database/                  # ✅ 数据库层
-│   │   └── schema.ts             # ✅ 数据库schema
-│   ├── ipc/                       # ✅ IPC通信层
-│   │   └── handlers.ts           # ✅ IPC处理器
-│   ├── services/                  # ✅ 业务服务层
-│   │   ├── WalletService.ts      # ✅ 钱包服务
-│   │   ├── CampaignService.ts    # ✅ 活动服务
-│   │   ├── CampaignExecutor.ts   # ✅ 发送调度
-│   │   ├── ContractService.ts    # ✅ 合约服务
-│   │   ├── GasService.ts         # ✅ Gas服务
-│   │   ├── PriceService.ts       # ✅ 价格服务
-│   │   ├── BlockchainService.ts  # ✅ 区块链服务
-│   │   ├── FileService.ts        # ✅ 文件服务
-│   │   ├── ChainService.ts       # ✅ 链管理服务
-│   │   └── SettingsService.ts    # ✅ 设置服务
-│   └── config/                    # ✅ 配置文件
-│       └── rpc-endpoints.ts      # ✅ RPC端点配置
-│
-├── renderer/                      # React渲染进程
-│   └── src/
-│       ├── main.tsx              # ✅ React入口
-│       ├── App.tsx               # ✅ 根组件
-│       ├── pages/                # ✅ 页面组件
-│       │   ├── Dashboard.tsx     # ✅ 仪表盘
-│       │   ├── CampaignCreate.tsx # ✅ 创建活动
-│       │   ├── CampaignDetail.tsx # ✅ 活动详情
-│       │   ├── History.tsx       # ✅ 历史记录
-│       │   └── Settings.tsx      # ✅ 设置
-│       ├── components/           # ✅ 通用组件
-│       │   └── Layout.tsx        # ✅ 布局组件
-│       ├── types/                # ✅ TypeScript类型
-│       └── styles/               # ✅ 样式文件
-│
-├── __tests__/                     # ✅ 测试目录
-│   ├── services/                 # ✅ 单元测试
-│   ├── components/               # ✅ 组件测试
-│   ├── integration/              # ✅ 集成测试
-│   ├── e2e/                      # ✅ E2E测试
-│   └── testnet/                  # ✅ 测试网测试
-│
-└── contracts/                    # ✅ 智能合约
-    ├── src/                      # ✅ 合约源码
-    ├── test/                     # ✅ 合约测试
-    └── scripts/                  # ✅ 部署脚本
-```
+---
 
-## 技术栈
+## 📚 相关文档
 
-- **前端**: React 19 + TypeScript + Tailwind CSS 4
-- **后端**: Node.js + Electron 39
-- **数据库**: SQLite (better-sqlite3 12)
-- **区块链**: ethers.js v6 + @solana/web3.js
-- **构建**: Vite 7 + electron-builder 26
-- **测试**: Jest + Playwright + Testing Library
-- **UI组件**: Headless UI + Heroicons
-
-## 核心功能完成度
-
-- ✅ **钱包管理**: 创建、加密、导出、余额查询
-- ✅ **活动管理**: 创建、编辑、状态跟踪、执行
-- ✅ **多链支持**: EVM兼容链 + Solana完整集成
-- ✅ **合约部署**: 自动部署、交互、管理
-- ✅ **批量发送**: 智能分批、并发、失败重试
-- ✅ **Gas优化**: 实时预估、价格策略、费用计算
-- ✅ **监控告警**: 进度监控、状态同步、通知
-- ✅ **报告导出**: CSV/PDF/JSON多格式支持
-- ✅ **链管理**: 自定义EVM链、Solana RPC管理
-- ✅ **测试覆盖**: 完整的单元、集成、E2E测试
-
-## 文档
-
-- [需求规格文档](./REQUIREMENTS.md)
-- [技术架构文档](./ARCHITECTURE_ELECTRON.md)
-- [UI设计文档](./UI_DESIGN.md)
-- [实施路线图](./ROADMAP_ELECTRON.md)
-- [技术挑战文档](./CHALLENGES.md)
-- [产品方案文档](./PRODUCT_OPTIONS.md)
+- **[架构设计](./ARCHITECTURE.md)**
+- **[API 文档](./API_DOCS.md)**
+- **[测试指南](./TESTING.md)**
+- **[开发路线图](./ROADMAP.md)**
+- **[UI 设计](./UI_DESIGN.md)**

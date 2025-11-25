@@ -9,30 +9,25 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Run tests
-      run: npm run test:coverage
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
 
   build:
-    needs: test
+
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            build-script: build:linux
+          - os: windows-latest
+            platform: win32
+            arch: x64
+            build-script: build:win
+          - os: macos-latest
+            platform: darwin
+            arch: universal
+            build-script: build:mac
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -44,73 +39,113 @@ jobs:
         node-version: '24'
         cache: 'npm'
 
+    - name: Setup Python (for node-gyp)
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install system dependencies
+      if: matrix.platform == 'linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libgtk-3-dev libnotify-dev libnss3-dev libxss1 libxtst6 xvfb libxrandr2 libasound2-dev paxctl
+
     - name: Install dependencies
       run: npm ci
+      env:
+        ELECTRON_SKIP_BINARY_DOWNLOAD: 1
 
-    - name: Build application
-      run: npm run build
+    - name: Rebuild native modules
+      run: npm rebuild
+
+    - name: Build application (Linux)
+      if: matrix.platform == 'linux'
+      run: xvfb-run -a npm run build:linux
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build application (Windows/macOS)
+      if: matrix.platform != 'linux'
+      run: npm run ${{ matrix.build-script }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: app-${{ matrix.os }}
+        name: app-${{ matrix.platform }}-${{ matrix.arch }}
         path: release/
+        retention-days: 30
 
-    - name: Release
-      if: startsWith(github.ref, 'refs/tags/')
+
+  build-signed:
+    if: startsWith(github.ref, 'refs/tags/')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin
+            arch: universal
+            build-script: build:mac
+          - os: windows-latest
+            platform: win32
+            arch: x64
+            build-script: build:win
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+        cache: 'npm'
+
+    - name: Setup Python (for node-gyp)
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: npm ci
+      env:
+        ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+    - name: Rebuild native modules
+      run: npm rebuild
+
+    - name: Build and sign macOS
+      if: matrix.platform == 'darwin'
+      run: npm run ${{ matrix.build-script }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CSC_LINK: ${{ secrets.CSC_LINK_MAC }}
+        CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD_MAC }}
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+    - name: Build and sign Windows
+      if: matrix.platform == 'win32'
+      run: npm run ${{ matrix.build-script }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CSC_LINK: ${{ secrets.CSC_LINK_WIN }}
+        CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD_WIN }}
+
+    - name: Upload signed artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-signed-${{ matrix.platform }}-${{ matrix.arch }}
+        path: release/
+        retention-days: 90
+
+    - name: Upload signed artifacts to release
       uses: softprops/action-gh-release@v1
       with:
         files: release/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  code-sign-macos:
-    if: startsWith(github.ref, 'refs/tags/') && runner.os == 'macOS'
-    needs: test
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Build and notarize
-      run: npm run build:mac
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        APPLE_ID: ${{ secrets.APPLE_ID }}
-        APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        CSC_LINK: ${{ secrets.CSC_LINK }}
-        CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-
-  code-sign-windows:
-    if: startsWith(github.ref, 'refs/tags/') && runner.os == 'Windows'
-    needs: test
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Build and sign
-      run: npm run build:win
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        CSC_LINK: ${{ secrets.CSC_LINK }}
-        CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}

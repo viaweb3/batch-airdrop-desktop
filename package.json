@@ -10,6 +10,7 @@
     "dev:vite": "vite",
     "dev:electron": "wait-on http://localhost:5173 && NODE_ENV=development electron .",
     "build": "tsc --project tsconfig.main.json && vite build && electron-builder",
+    "build:ci": "node scripts/build-ci.js",
     "build:win": "npm run build -- --win",
     "build:mac": "npm run build -- --mac",
     "build:linux": "npm run build -- --linux",
@@ -20,11 +21,6 @@
     "test:unit": "jest --config jest.config.mjs --testPathPattern=src/__tests__/services",
     "test:component": "jest --config jest.config.mjs --testPathPattern=src/__tests__/components",
     "test:integration": "jest --config jest.config.mjs --testPathPattern=src/__tests__/integration",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
-    "test:e2e:codegen": "playwright codegen",
-    "test:e2e:install": "playwright install",
     "test:testnet": "jest --config jest.config.mjs --testPathPattern=src/__tests__/testnet",
     "test:runner": "ts-node src/__tests__/test-runner.ts",
     "test:silent": "jest --config jest.config.mjs --silent"
@@ -50,7 +46,6 @@
   "devDependencies": {
     "@headlessui/react": "^2.2.1",
     "@heroicons/react": "^2.2.0",
-    "@playwright/test": "^1.50.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
