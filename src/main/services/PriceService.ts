@@ -63,32 +63,35 @@ export class PriceService {
   }
 
   private startPriceUpdates(): void {
-    console.log('[PriceService] Starting price updates...');
-    // Update prices every 3 minutes (180 seconds)
+    // Update prices every 2 minutes (120 seconds) for more accuracy
     this.updateInterval = setInterval(async () => {
       try {
-        console.log('[PriceService] Running scheduled price update...');
         await this.updateAllPrices();
       } catch (error) {
         console.error('[PriceService] Price update failed:', error);
+        // If scheduled update fails, try fallback after 30 seconds
+        setTimeout(async () => {
+          try {
+            await this.updateAllPrices();
+          } catch (retryError) {
+            console.error('[PriceService] Retry price update also failed:', retryError);
+          }
+        }, 30000);
       }
-    }, 180000);
+    }, 120000); // Reduced from 180000 to 120000
 
     // Delay initial price update to avoid startup conflicts
-    console.log('[PriceService] Scheduling initial price update delay...');
     setTimeout(async () => {
       try {
-        console.log('[PriceService] Running delayed initial price update...');
         await this.updateAllPrices();
       } catch (error) {
         console.error('[PriceService] Delayed initial price update failed:', error);
       }
-    }, 5000); // 5 second delay
+    }, 3000); // Reduced from 5000 to 3000 for faster initial prices
   }
 
   private async updateAllPrices(): Promise<void> {
     const coinIds = this.networks.map(n => n.coingeckoId).filter((id, index, self) => self.indexOf(id) === index);
-    console.log('[PriceService] Fetching prices for coins:', coinIds);
 
     try {
       const url = 'https://api.coingecko.com/api/v3/simple/price';
@@ -96,14 +99,12 @@ export class PriceService {
         ids: coinIds.join(','),
         vs_currencies: 'usd',
       };
-      console.log('[PriceService] Making request to:', url, 'with params:', params);
 
       const response = await axios.get(url, {
         params,
         timeout: 10000,
       });
 
-      console.log('[PriceService] Received response from CoinGecko:', response.data);
       const timestamp = Math.floor(Date.now() / 1000);
 
       this.networks.forEach(network => {
@@ -119,16 +120,10 @@ export class PriceService {
             lastUpdated: timestamp,
           };
 
-          console.log(`[PriceService] Updating price for ${network.nativeTokenSymbol}: $${coinData.usd}`);
           this.priceCache.set(network.nativeTokenSymbol, priceData);
           this.savePriceToDatabase(priceData);
-        } else if (coinData) {
-          console.warn(`[PriceService] Invalid price data for ${network.nativeTokenSymbol}:`, coinData);
-        } else {
-          console.warn(`[PriceService] No data returned for ${network.nativeTokenSymbol} (${network.coingeckoId})`);
         }
       });
-      console.log('[PriceService] Price cache now has', this.priceCache.size, 'entries');
     } catch (error) {
       console.error('[PriceService] Failed to fetch prices from CoinGecko:', error);
       // Fallback to cached prices
@@ -163,10 +158,26 @@ export class PriceService {
     }
   }
 
-  async getPrice(symbol: string): Promise<number> {
-    const cachedPrice = this.priceCache.get(symbol.toUpperCase());
+  async getPrice(symbol: string, forceRefresh: boolean = false): Promise<number> {
+    symbol = symbol.toUpperCase();
+
+    // If force refresh or no cached data, try to get fresh price
+    if (forceRefresh || !this.priceCache.has(symbol)) {
+      try {
+        await this.updateSinglePrice(symbol);
+      } catch (error) {
+        console.warn(`⚠️ [PriceService] Failed to refresh price for ${symbol}:`, error);
+      }
+    }
+
+    // Try cache first
+    const cachedPrice = this.priceCache.get(symbol);
     if (cachedPrice) {
-      return cachedPrice.price;
+      // Check if price is recent (within 5 minutes)
+      const ageSeconds = Math.floor(Date.now() / 1000) - cachedPrice.lastUpdated;
+      if (ageSeconds < 300) { // 5 minutes
+        return cachedPrice.price;
+      }
     }
 
     // Fallback to database
@@ -176,12 +187,69 @@ export class PriceService {
         WHERE symbol = ?
         ORDER BY timestamp DESC
         LIMIT 1
-      `).get(symbol.toUpperCase()) as { price: number } | undefined;
+      `).get(symbol) as { price: number } | undefined;
 
-      return result ? result.price : 0;
+      if (result && result.price > 0) {
+        return result.price;
+      }
     } catch (error) {
       console.error('Failed to get price from database:', error);
-      return 0;
+    }
+
+    // Final fallback with hardcoded prices for major tokens
+    const fallbackPrices: Record<string, number> = {
+      'ETH': 3500,  // Conservative ETH price
+      'BNB': 600,   // Conservative BNB price
+      'MATIC': 0.9, // Conservative MATIC price
+      'SOL': 150,   // Conservative SOL price
+      'AVAX': 35,   // Conservative AVAX price
+    };
+
+    return fallbackPrices[symbol] || 0;
+  }
+
+  /**
+   * Update price for a single token immediately
+   */
+  private async updateSinglePrice(symbol: string): Promise<void> {
+    const network = this.networks.find(n => n.nativeTokenSymbol === symbol);
+    if (!network) {
+      throw new Error(`Network not found for symbol ${symbol}`);
+    }
+
+    try {
+      const url = 'https://api.coingecko.com/api/v3/simple/price';
+      const params = {
+        ids: network.coingeckoId,
+        vs_currencies: 'usd',
+      };
+
+      const response = await axios.get(url, {
+        params,
+        timeout: 5000, // Shorter timeout for single requests
+      });
+
+      const coinData = response.data[network.coingeckoId];
+      if (coinData && typeof coinData.usd === 'number' && coinData.usd > 0) {
+        const timestamp = Math.floor(Date.now() / 1000);
+        const priceData: PriceData = {
+          symbol: network.nativeTokenSymbol,
+          price: coinData.usd,
+          change24h: 0,
+          changePercent24h: 0,
+          marketCap: 0,
+          volume24h: 0,
+          lastUpdated: timestamp,
+        };
+
+        this.priceCache.set(symbol, priceData);
+        this.savePriceToDatabase(priceData);
+      } else {
+        throw new Error(`Invalid price data received: ${JSON.stringify(coinData)}`);
+      }
+    } catch (error) {
+      console.error(`❌ [PriceService] Failed to update ${symbol} price:`, error);
+      throw error;
     }
   }
 

@@ -79,10 +79,10 @@ export class ContractService {
 
       // Deploy contract
       // Our contract has no constructor arguments, so we pass tx options directly
-      // Gas limit with buffer (actual usage ~497,042, setting to 700,000 for safety)
+      // Gas limit optimized (actual usage ~306K, setting to 500K for safety)
       const deployOptions = {
         ...txOptions,
-        gasLimit: BigInt(700000) // 700K gas for contract deployment
+        gasLimit: BigInt(500000) // 500K gas for contract deployment (63% buffer)
       };
 
       const contract = await contractFactory.deploy(deployOptions);
@@ -119,7 +119,6 @@ export class ContractService {
       // Check current allowance
       const currentAllowance = await tokenContract.allowance(wallet.address, contractAddress);
       if (currentAllowance >= BigInt(amount)) {
-        console.log('Sufficient allowance already exists, skipping approval');
         return 'already-approved';
       }
 
@@ -272,7 +271,6 @@ export class ContractService {
       await tx.wait();
 
       const amount = ethers.formatUnits(tokenBalance, tokenDecimals);
-      console.log(`Withdrawn ${amount} tokens to ${recipientAddress}`);
 
       return {
         txHash: tx.hash,
@@ -330,8 +328,7 @@ export class ContractService {
         const estimatedGasLimit = await provider.estimateGas(mockTx);
         gasLimit = estimatedGasLimit;
 
-        console.log(`Precise gas limit for withdrawal: ${gasLimit.toString()}`);
-      } catch (estimateError) {
+              } catch (estimateError) {
         console.warn('Precise gas estimation failed, using fallback:', estimateError);
         gasLimit = 21000n; // Standard ETH transfer gas limit
       }
@@ -342,12 +339,10 @@ export class ContractService {
       if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas && feeData.maxFeePerGas > 0n) {
         // EIP-1559: Use actual fee data from network
         gasCost = feeData.maxFeePerGas * gasLimit;
-        console.log(`Using EIP-1559 fees: maxFee=${ethers.formatUnits(feeData.maxFeePerGas, 'gwei')} Gwei`);
-      } else if (feeData.gasPrice && feeData.gasPrice > 0n) {
+              } else if (feeData.gasPrice && feeData.gasPrice > 0n) {
         // Legacy: Use actual gas price from network
         gasCost = feeData.gasPrice * gasLimit;
-        console.log(`Using legacy gas price: ${ethers.formatUnits(feeData.gasPrice, 'gwei')} Gwei`);
-      } else {
+              } else {
         // Fallback to gasService data
         const txOptions = this.gasService.getTransactionOptions(gasInfo);
         if (txOptions.maxFeePerGas) {
@@ -408,7 +403,6 @@ export class ContractService {
       await tx.wait();
 
       const amount = ethers.formatEther(amountToWithdraw);
-      console.log(`Withdrawn ${amount} native tokens to ${recipientAddress}`);
 
       return {
         txHash: tx.hash,

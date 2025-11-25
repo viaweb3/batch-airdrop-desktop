@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-01-25
+
+### Fixed
+- **BSC Testnet Balance Refresh**: Fixed async/sync mismatch in database queries that prevented balance refresh functionality on BSC testnet
+- **Dynamic Native Token Symbols**: Fixed hardcoded "ETH" in insufficient balance messages to use correct native token symbols (BNB, MATIC, etc.)
+- **Contract Deployment Gas Limits**: Optimized gas limits for better efficiency:
+  - Contract deployment: 700K → 500K gas
+  - Token approval: 165K → 47K gas
+  - Batch transfer: 14.4M → 5.7M gas
+- **Variable Scope Error**: Fixed "nativeBalance is not defined" error during contract deployment balance checks
+- **UI Routing**: Fixed campaign detail page return button to show correct destination ("返回仪表盘" instead of "返回活动列表")
+- **Token Amount Display**: Simplified total airdrop amount display logic to prevent precision issues
+
+### Changed
+- **Gas Estimation**: Enhanced accuracy with chain-specific gas multipliers for different networks
+- **UI Terminology**: Updated "Gas 价格" to "GasPrice" for more professional blockchain terminology
+- **Currency Display**: Removed fiat currency estimation, focusing on native token costs only
+- **Code Cleanup**: Removed unnecessary debug console.log statements across all service files
+- **Wallet Management**: Removed refresh balance functionality from wallet management page for cleaner UI
+
+### Optimized
+- **Gas Multipliers**: Implemented chain-specific gas multipliers for accurate cost estimation:
+  - Ethereum: 1.0x (baseline)
+  - BSC: 0.3x (lower gas costs)
+  - Polygon: 0.5x
+  - Arbitrum/Optimism/Base: 0.2x
+  - Sepolia testnet: 0.1x
+- **Safety Buffers**: Reduced gas multiplier from 1.2 to 1.1 and transaction buffer from 10% to 5%
+
 ## [Unreleased]
 
 ### Added

@@ -69,26 +69,19 @@ export class BlockchainService {
     tokenDecimals?: number,
     rpcUrl?: string
   ): Promise<BalanceData> {
-    const effectiveRpcUrl = rpcUrl || this.getDefaultRPC(chain);
-    console.log(`[BlockchainService] Getting EVM balance for ${address} on chain ${chain}, token: ${tokenAddress}, decimals: ${tokenDecimals}, RPC: ${effectiveRpcUrl}`);
-
+    const effectiveRpcUrl = rpcUrl || await this.getDefaultRPC(chain);
     const provider = new ethers.JsonRpcProvider(effectiveRpcUrl);
 
     // 获取原生代币余额
     const nativeBalance = await provider.getBalance(address);
-    console.log(`[BlockchainService] Native balance: ${ethers.formatEther(nativeBalance)} ETH`);
 
     let tokenBalance: string | undefined;
-    console.log(`[BlockchainService] Checking token balance. tokenAddress: "${tokenAddress}", tokenDecimals: ${tokenDecimals}, typeof tokenAddress: ${typeof tokenAddress}`);
-
     if (tokenAddress && tokenAddress !== '0x0000000000000000000000000000000000000000') {
       try {
-        console.log(`[BlockchainService] Attempting to fetch token balance for ${tokenAddress}`);
 
         // If tokenDecimals is not provided, fetch it dynamically
         if (tokenDecimals === undefined) {
-          console.log(`[BlockchainService] Token decimals not provided, fetching from contract for ${tokenAddress}`);
-          const erc20Abi = [
+                    const erc20Abi = [
             'function balanceOf(address owner) view returns (uint256)',
             'function decimals() view returns (uint8)'
           ];
@@ -102,10 +95,8 @@ export class BlockchainService {
           ]);
 
           tokenBalance = ethers.formatUnits(balance, Number(decimals));
-          console.log(`[BlockchainService] Token balance fetched: ${tokenBalance} (decimals: ${decimals})`);
         } else {
           // Use provided decimals
-          console.log(`[BlockchainService] Using provided decimals: ${tokenDecimals}`);
           const erc20Abi = [
             'function balanceOf(address owner) view returns (uint256)'
           ];
@@ -113,7 +104,6 @@ export class BlockchainService {
           const contract = new ethers.Contract(tokenAddress, erc20Abi, provider);
           const balance = await contract.balanceOf(address);
           tokenBalance = ethers.formatUnits(balance, tokenDecimals);
-          console.log(`[BlockchainService] Token balance fetched: ${tokenBalance} (using provided decimals: ${tokenDecimals})`);
         }
 
       } catch (error) {
@@ -127,8 +117,7 @@ export class BlockchainService {
         tokenBalance = '0';
       }
     } else {
-      console.log(`[BlockchainService] No token address provided or is zero address, skipping token balance query`);
-    }
+          }
 
     return {
       native: ethers.formatEther(nativeBalance),
@@ -216,7 +205,7 @@ export class BlockchainService {
     recipientCount?: number,
     rpcUrl?: string
   ): Promise<GasEstimate> {
-    const provider = new ethers.JsonRpcProvider(rpcUrl || this.getDefaultRPC(chain));
+    const provider = new ethers.JsonRpcProvider(rpcUrl || await this.getDefaultRPC(chain));
 
     // 获取当前gas价格
     const feeData = await provider.getFeeData();
@@ -334,27 +323,26 @@ export class BlockchainService {
     }
   }
 
-  private getDefaultRPC(chain: string): string {
+  private async getDefaultRPC(chain: string): Promise<string> {
     // 尝试从数据库获取 RPC URL
     try {
       if (this.databaseManager) {
         const db = this.databaseManager.getDatabase();
 
         // 首先尝试按名称或类型查询
-        let chainData = db.prepare(
+        let chainData = await db.prepare(
           'SELECT rpc_url FROM chains WHERE name = ? OR type = ? LIMIT 1'
         ).get(chain, chain.toLowerCase()) as { rpc_url?: string } | undefined;
 
         // 如果没有找到，尝试按 chain_id 查询（适用于传入的是数字字符串的情况）
         if (!chainData || !chainData.rpc_url) {
-          chainData = db.prepare(
+          chainData = await db.prepare(
             'SELECT rpc_url FROM chains WHERE chain_id = ? LIMIT 1'
           ).get(chain) as { rpc_url?: string } | undefined;
         }
 
         if (chainData && chainData.rpc_url) {
-          console.log(`[BlockchainService] Found RPC URL from database for chain ${chain}: ${chainData.rpc_url}`);
-          return chainData.rpc_url;
+                    return chainData.rpc_url;
         }
       }
     } catch (error) {
@@ -385,8 +373,7 @@ export class BlockchainService {
     };
 
     const rpcUrl = rpcMap[chain.toLowerCase()] || rpcMap[chain] || rpcMap['ethereum'];
-    console.log(`[BlockchainService] Using fallback RPC URL for chain ${chain}: ${rpcUrl}`);
-    return rpcUrl;
+        return rpcUrl;
   }
 
   private async getETHPriceUSD(): Promise<number> {
@@ -600,8 +587,7 @@ export class BlockchainService {
       // Convert amount to human-readable format
       const amountFormatted = (Number(balance) / Math.pow(10, decimals)).toString();
 
-      console.log(`[BlockchainService] Withdrew ${amountFormatted} SPL tokens, tx: ${signature}`);
-
+      
       return {
         txHash: signature,
         amount: amountFormatted
@@ -694,8 +680,7 @@ export class BlockchainService {
       // Convert lamports to SOL
       const amountInSOL = (amountToSend / LAMPORTS_PER_SOL).toString();
 
-      console.log(`[BlockchainService] Withdrew ${amountInSOL} SOL, tx: ${signature}`);
-
+      
       return {
         txHash: signature,
         amount: amountInSOL

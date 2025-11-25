@@ -60,20 +60,7 @@ export default function WalletManagement() {
   const endIndex = startIndex + pageSize;
   const paginatedWallets = wallets.slice(startIndex, endIndex);
 
-  const handleRefreshBalances = async () => {
-    setLoading(true);
-    try {
-      // 只刷新当前页的钱包余额
-      await loadWallets();
-      alert('当前页余额刷新成功！');
-    } catch (error) {
-      console.error('Failed to refresh balances:', error);
-      alert('刷新余额失败，请重试');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  
   const handleViewDetails = (wallet: ActivityWallet) => {
     // 直接跳转到对应的活动详情页面
     navigate(`/campaign/${wallet.campaignId}`);
@@ -193,20 +180,6 @@ export default function WalletManagement() {
           <h1 className="text-2xl font-bold">钱包管理</h1>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleRefreshBalances}
-            disabled={loading}
-            className="btn btn-ghost"
-          >
-            {loading ? (
-              <>
-                <span className="loading loading-spinner loading-sm"></span>
-                刷新中...
-              </>
-            ) : (
-              '🔄 刷新余额'
-            )}
-          </button>
           <button
             onClick={() => navigate('/')}
             className="btn btn-ghost"

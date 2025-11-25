@@ -853,13 +853,13 @@ export default function CampaignCreate() {
                   </div>
 
                   <div className="stat bg-base-200 rounded-lg p-4">
-                    <div className="stat-title text-xs">Gas 成本 (ETH)</div>
-                    <div className="stat-value text-2xl">{estimation.estimatedGasCostETH}</div>
-                    <div className="stat-desc">约 ${estimation.estimatedGasCostUSD}</div>
+                    <div className="stat-title text-xs">Gas 成本 ({estimation.tokenSymbol})</div>
+                    <div className="stat-value text-2xl">{estimation.estimatedGasCost}</div>
+                    <div className="stat-desc">本位币成本</div>
                   </div>
 
                   <div className="stat bg-base-200 rounded-lg p-4">
-                    <div className="stat-title text-xs">Gas 价格 {estimation.isEIP1559 && '(EIP-1559)'}</div>
+                    <div className="stat-title text-xs">GasPrice {estimation.isEIP1559 && '(EIP-1559)'}</div>
                     <div className="stat-value text-2xl">{estimation.gasPrice}</div>
                     <div className="stat-desc">
                       {estimation.isEIP1559 ? (
@@ -891,8 +891,8 @@ export default function CampaignCreate() {
                     <div>✓ 总预计时间: {estimation.recommendations.totalEstimatedTime} 分钟</div>
                     <div className="mt-2 text-xs opacity-70">
                       {estimation.isEIP1559
-                        ? '💡 使用EIP-1559动态Gas定价，已包含20%的maxFee和50%的priority安全缓冲'
-                        : '💡 使用传统Gas定价，已包含20%安全缓冲'
+                        ? '💡 使用EIP-1559动态GasPrice定价，已包含10%的maxFee和50%的priority安全缓冲'
+                        : '💡 使用传统GasPrice定价，已包含10%安全缓冲'
                       }
                     </div>
                   </div>
@@ -904,7 +904,7 @@ export default function CampaignCreate() {
                   </svg>
                   <div className="text-sm">
                     <div className="font-bold">重要提醒</div>
-                    <div>⚠️  Gas价格从RPC实时获取，但网络拥堵时可能会有波动</div>
+                    <div>⚠️  GasPrice从RPC实时获取，但网络拥堵时可能会有波动</div>
                     <div>⚠️  估算已包含安全缓冲，确保交易能够快速确认</div>
                   </div>
                 </div>

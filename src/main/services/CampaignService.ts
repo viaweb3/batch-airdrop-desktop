@@ -157,8 +157,7 @@ export class CampaignService {
           await insertRecipient.run(id, recipient.address, recipient.amount, batchNumber, now);
         }
 
-        console.log(`[CampaignService] Assigned batch numbers to ${data.recipients.length} recipients with batch size ${data.batchSize || 100}`);
-      });
+              });
 
       const campaign = await this.getCampaignById(id);
       if (!campaign) {
@@ -238,8 +237,7 @@ export class CampaignService {
   }
 
   private mapRowToCampaign(row: any): Campaign {
-    console.log('[CampaignService] mapRowToCampaign: token_decimals from database:', row.token_decimals);
-    const campaign = {
+        const campaign = {
       id: row.id,
       name: row.name,
       description: row.description,
@@ -264,8 +262,7 @@ export class CampaignService {
       updatedAt: row.updated_at,
       completedAt: row.completed_at,
     };
-    console.log('[CampaignService] mapRowToCampaign: campaign.tokenDecimals:', campaign.tokenDecimals);
-    return campaign;
+        return campaign;
   }
 
   async updateCampaignStatus(id: string, status: Campaign['status']): Promise<void> {
@@ -625,8 +622,7 @@ export class CampaignService {
         new Date().toISOString()
       );
 
-      console.log(`Transaction recorded: ${transactionData.txType} - ${transactionData.txHash}`);
-    } catch (error) {
+          } catch (error) {
       console.error('Failed to record transaction:', error);
       // Don't throw error - recording transaction failure shouldn't break the main flow
     }
@@ -656,8 +652,7 @@ export class CampaignService {
       query += ` WHERE tx_hash = ?`;
 
       await this.db.prepare(query).run(...updates);
-      console.log(`Transaction status updated: ${txHash} -> ${status}`);
-    } catch (error) {
+          } catch (error) {
       console.error('Failed to update transaction status:', error);
     }
   }
@@ -767,8 +762,7 @@ export class CampaignService {
         WHERE campaign_id = ? AND status IN ('FAILED', 'PENDING')
       `).run(new Date().toISOString(), campaignId);
 
-      console.log(`重置了 ${result.changes} 个失败的接收者`);
-    } catch (error) {
+          } catch (error) {
       console.error('Failed to retry failed transactions:', error);
       throw error;
     }

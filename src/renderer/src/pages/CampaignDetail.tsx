@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { EVMChain } from '../types';
 import BigNumber from 'bignumber.js';
 
+
 interface Campaign {
   id: string;
   name: string;
@@ -315,6 +316,10 @@ export default function CampaignDetail() {
   const handleDeployContract = async () => {
     if (!campaign || !id || !campaign.walletAddress || !campaign.chain) return;
 
+    let nativeBalance = 0;
+    let estimatedDeploymentCost = "0.0015"; // 默认估算值
+    let minGasRequired = 0.0015; // 默认最低要求
+
     // 先获取最新余额
     try {
       const freshBalance = await window.electronAPI.wallet.getBalance(
@@ -322,16 +327,7 @@ export default function CampaignDetail() {
         campaign.chain
       );
 
-      const nativeBalance = parseFloat(freshBalance.native || '0');
-
-      // 合约部署实际使用约364,571 gas (gas limit 500,000)
-      // 按20 gwei计算约0.01 ETH，设置最低要求为0.0015 ETH以包含缓冲
-      const minGasRequired = 0.0015;
-      if (nativeBalance < minGasRequired) {
-        setDeploymentError(`Gas余额不足，请确保钱包有至少 ${minGasRequired} ETH 来支付部署费用。当前余额: ${nativeBalance.toFixed(6)} ETH`);
-        setShowDeploymentModal(true);
-        return;
-      }
+      nativeBalance = parseFloat(freshBalance.native || '0');
     } catch (balanceError) {
       console.error('Failed to check balance before deployment:', balanceError);
       setDeploymentError('无法获取余额信息，请稍后重试');
@@ -339,9 +335,7 @@ export default function CampaignDetail() {
       return;
     }
 
-    // 获取gas估算信息
-    let estimatedDeploymentCost = "0.001"; // 默认估算值
-
+    // 获取gas估算信息来动态计算最低余额要求
     try {
       // 获取当前链的gas价格估算
       if (window.electronAPI?.blockchain && campaign.chain) {
@@ -353,24 +347,36 @@ export default function CampaignDetail() {
           0 // 收件人数量为0，只估算部署
         );
 
-        // 将估算的gas费用转换为原生代币 (假设约500K gas * 当前gas价格)
-        const gasLimit = 500000; // 合约部署的大概gas限制
+        // 将估算的gas费用转换为原生代币 (使用ContractService中的500K gas限制)
+        const gasLimit = 500000; // 合约部署的实际gas限制
         const gasPriceGwei = parseFloat(gasEstimate.gasPrice) || 30; // 默认30 Gwei
         const gasCostWei = gasLimit * gasPriceGwei * 1e9; // 转换为wei
         estimatedDeploymentCost = (gasCostWei / 1e18).toFixed(6); // 转换为原生代币单位
-      }
+
+        // 设置最低余额要求为估算成本的1.5倍（包含安全缓冲）
+        minGasRequired = parseFloat(estimatedDeploymentCost) * 1.5;
+
+              }
     } catch (gasError) {
       console.warn('Failed to estimate deployment gas cost, using default:', gasError);
     }
 
     const nativeTokenSymbol = getNativeTokenSymbol(campaign.chain);
 
+    // 检查余额是否足够（使用动态计算的最低要求）
+    if (nativeBalance < minGasRequired) {
+      setDeploymentError(`Gas余额不足，请确保钱包有至少 ${minGasRequired.toFixed(6)} ${nativeTokenSymbol} 来支付部署费用。当前余额: ${nativeBalance.toFixed(6)} ${nativeTokenSymbol}`);
+      setShowDeploymentModal(true);
+      return;
+    }
+
     // 显示部署确认对话框
     const confirmed = confirm(`确定要为此活动部署合约吗？
 
-合约部署将消耗 ${nativeTokenSymbol} 作为 Gas 费用：
-• 当前余额: ${walletBalances.native.current} ${nativeTokenSymbol}
-• 预计部署费用: ~${estimatedDeploymentCost} ${nativeTokenSymbol} (基于当前网络gas价格)
+合约部署 Gas 费用详情：
+• 当前余额: ${nativeBalance.toFixed(6)} ${nativeTokenSymbol}
+• 预计部署费用: ~${estimatedDeploymentCost} ${nativeTokenSymbol}
+• 最低余额要求: ${minGasRequired.toFixed(6)} ${nativeTokenSymbol} (含1.5倍安全缓冲)
 
 注意：部署后无法撤销，请确认链配置和代币地址正确。`);
     if (!confirmed) return;
@@ -1012,7 +1018,7 @@ export default function CampaignDetail() {
             onClick={() => navigate('/')}
             className="btn btn-ghost"
           >
-            ← 返回活动列表
+            ← 返回仪表盘
           </button>
         </div>
       </div>
@@ -1124,7 +1130,7 @@ export default function CampaignDetail() {
                   <span className="text-sm font-medium text-base-content/70">空投总量:</span>
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-bold text-primary">
-                      {parseFloat(totalAirdropAmount).toLocaleString()}
+                      {totalAirdropAmount}
                     </span>
                     <span className="text-sm text-base-content/70">{campaign.tokenSymbol || 'tokens'}</span>
                   </div>

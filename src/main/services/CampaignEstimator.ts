@@ -1,5 +1,4 @@
 import { GasService } from './GasService';
-import { PriceService } from './PriceService';
 import { ChainService } from './ChainService';
 import type { DatabaseManager } from '../database/sqlite-schema';
 
@@ -15,14 +14,13 @@ export interface EstimateResult {
   estimatedBatches: number;
   estimatedGasPerBatch: string;
   estimatedTotalGas: string;
-  estimatedGasCostETH: string;
-  estimatedGasCostUSD: string;
+  estimatedGasCost: string; // Native token cost (ETH, BNB, etc.)
   estimatedDuration: string; // in minutes
-  gasPrice: string;
+  gasPrice: string; // Gas price in Gwei
   maxFeePerGas?: string; // EIP-1559
   maxPriorityFeePerGas?: string; // EIP-1559
   isEIP1559?: boolean;
-  tokenSymbol?: string;
+  tokenSymbol?: string; // Native token symbol (ETH, BNB, MATIC, etc.)
   recommendations: {
     optimalBatchSize: number;
     estimatedTimePerBatch: string; // in seconds
@@ -32,19 +30,29 @@ export interface EstimateResult {
 
 export class CampaignEstimator {
   private gasService: GasService;
-  private priceService: PriceService;
   private chainService: ChainService;
 
-  // Gas constants for different operations
+  // Updated gas constants based on actual usage data
   private readonly GAS_PER_TRANSFER = 21000; // Standard ETH transfer
-  private readonly GAS_PER_ERC20_TRANSFER = 65000; // ERC20 transfer
-  private readonly GAS_OVERHEAD_PER_BATCH = 50000; // Contract batch overhead
+  private readonly GAS_PER_ERC20_TRANSFER = 50000; // Updated: Based on actual usage (~47K)
+  private readonly GAS_OVERHEAD_PER_BATCH = 80000; // Updated: Based on actual contract deployment (~80K)
   private readonly DEFAULT_BATCH_SIZE = 100;
   private readonly SECONDS_PER_BATCH = 15; // Default sending interval
 
+  // Chain-specific gas multipliers for better accuracy
+  private readonly CHAIN_GAS_MULTIPLIERS: Record<string, number> = {
+    '1': 1.0,      // Ethereum - use actual gas
+    '56': 0.3,     // BSC - much lower gas costs
+    '137': 0.5,    // Polygon - lower gas costs
+    '42161': 0.2,  // Arbitrum - much lower gas costs
+    '10': 0.2,     // Optimism - much lower gas costs
+    '8453': 0.2,   // Base - much lower gas costs
+    '43114': 0.8,  // Avalanche - moderately lower gas costs
+    '11155111': 0.1, // Sepolia testnet - very low gas costs
+  };
+
   constructor(databaseManager: DatabaseManager) {
     this.gasService = new GasService();
-    this.priceService = new PriceService(databaseManager);
     this.chainService = new ChainService(databaseManager);
   }
 
@@ -64,9 +72,7 @@ export class CampaignEstimator {
         throw new Error(`Chain configuration not found for chain ${request.chain}`);
       }
 
-      console.log(`🔍 [CampaignEstimator] Estimating for chain ${request.chain} (${chainConfig.name})`);
-      console.log(`🔍 [CampaignEstimator] RPC URL: ${chainConfig.rpcUrl}`);
-
+      
       // Get real-time gas price from RPC with EIP-1559 support
       let gasPriceGwei: number;
       let maxFeePerGas: string | undefined;
@@ -80,37 +86,37 @@ export class CampaignEstimator {
         maxPriorityFeePerGas = gasData.maxPriorityFeePerGas;
         isEIP1559 = gasData.isEIP1559;
 
-        console.log(`✓ [CampaignEstimator] Got real-time gas price: ${gasPriceGwei} Gwei`);
-        if (isEIP1559) {
-          console.log(`✓ [CampaignEstimator] EIP-1559: maxFee=${maxFeePerGas} Gwei, priority=${maxPriorityFeePerGas} Gwei`);
-        }
-      } catch (error) {
+              } catch (error) {
         console.warn(`⚠️  [CampaignEstimator] Failed to get RPC gas price, using fallback:`, error);
         const fallbackGasPrice = await this.gasService.getGasPrice(request.chain);
         gasPriceGwei = parseFloat(fallbackGasPrice);
-        console.log(`📌 [CampaignEstimator] Using fallback gas price: ${gasPriceGwei} Gwei`);
-      }
+              }
 
       // Determine if it's ERC20 or native token
       const isNativeToken = !request.tokenAddress ||
         request.tokenAddress === '0x0000000000000000000000000000000000000000';
 
-      // Calculate gas estimates
+      // Get chain-specific gas multiplier
+      const chainMultiplier = this.CHAIN_GAS_MULTIPLIERS[request.chain] || 1.0;
+
+      // Calculate gas estimates with chain-specific adjustments
       const gasPerTransfer = isNativeToken
         ? this.GAS_PER_TRANSFER
         : this.GAS_PER_ERC20_TRANSFER;
 
-      const gasPerBatch = (gasPerTransfer * batchSize) + this.GAS_OVERHEAD_PER_BATCH;
+      // Apply chain-specific multiplier for more accurate estimates
+      const adjustedGasPerTransfer = Math.floor(gasPerTransfer * chainMultiplier);
+      const adjustedOverhead = Math.floor(this.GAS_OVERHEAD_PER_BATCH * chainMultiplier);
+      const gasPerBatch = (adjustedGasPerTransfer * batchSize) + adjustedOverhead;
       const totalGas = gasPerBatch * totalBatches;
 
-      // Calculate gas cost in ETH
+      
+      // Calculate gas cost in native token
       const gasCostWei = BigInt(totalGas) * BigInt(Math.floor(gasPriceGwei * 1e9));
-      const gasCostETH = Number(gasCostWei) / 1e18;
+      const gasCostNative = Number(gasCostWei) / 1e18;
 
-      // Get ETH price in USD
-      const ethPrice = await this.priceService.getPrice('ETH');
-      const gasCostUSD = gasCostETH * ethPrice;
-
+      const nativeTokenSymbol = chainConfig.symbol || 'ETH';
+      
       // Calculate duration
       const totalTimeSeconds = totalBatches * this.SECONDS_PER_BATCH;
       const totalTimeMinutes = totalTimeSeconds / 60;
@@ -118,7 +124,8 @@ export class CampaignEstimator {
       // Calculate optimal batch size (balance between gas efficiency and speed)
       const optimalBatchSize = this.calculateOptimalBatchSize(
         request.recipientCount,
-        gasPerTransfer
+        adjustedGasPerTransfer,
+        request.chain
       );
 
       const result: EstimateResult = {
@@ -126,14 +133,13 @@ export class CampaignEstimator {
         estimatedBatches: totalBatches,
         estimatedGasPerBatch: gasPerBatch.toString(),
         estimatedTotalGas: totalGas.toString(),
-        estimatedGasCostETH: gasCostETH.toFixed(6),
-        estimatedGasCostUSD: gasCostUSD.toFixed(2),
+        estimatedGasCost: gasCostNative.toFixed(6),
         estimatedDuration: totalTimeMinutes.toFixed(1),
         gasPrice: gasPriceGwei.toFixed(2),
         maxFeePerGas,
         maxPriorityFeePerGas,
         isEIP1559,
-        tokenSymbol: chainConfig.symbol,
+        tokenSymbol: nativeTokenSymbol,
         recommendations: {
           optimalBatchSize,
           estimatedTimePerBatch: this.SECONDS_PER_BATCH.toString(),
@@ -141,13 +147,7 @@ export class CampaignEstimator {
         },
       };
 
-      console.log(`✓ [CampaignEstimator] Estimation complete:`, {
-        batches: totalBatches,
-        totalGas: totalGas.toLocaleString(),
-        costETH: gasCostETH.toFixed(6),
-        costUSD: gasCostUSD.toFixed(2),
-      });
-
+      
       return result;
     } catch (error) {
       console.error('Failed to estimate campaign:', error);
@@ -156,26 +156,41 @@ export class CampaignEstimator {
   }
 
   /**
-   * Calculate optimal batch size based on recipient count and gas costs
+   * Calculate optimal batch size based on recipient count, gas costs, and chain characteristics
    */
-  private calculateOptimalBatchSize(recipientCount: number, gasPerTransfer: number): number {
+  private calculateOptimalBatchSize(recipientCount: number, gasPerTransfer: number, chainId: string): number {
+    // Chain-specific maximum batch sizes (considering gas limits and block constraints)
+    const chainMaxBatchSize: Record<string, number> = {
+      '1': 200,       // Ethereum - conservative due to high gas
+      '56': 500,      // BSC - can handle larger batches
+      '137': 300,     // Polygon - moderate batch sizes
+      '42161': 400,   // Arbitrum - good for larger batches
+      '10': 400,      // Optimism - good for larger batches
+      '8453': 400,    // Base - good for larger batches
+      '43114': 200,   // Avalanche - moderate batches
+      '11155111': 100, // Sepolia testnet - smaller batches
+    };
+
+    const maxBatchSize = chainMaxBatchSize[chainId] || 200;
+
     // For small campaigns, use smaller batches
     if (recipientCount < 50) {
-      return Math.min(25, recipientCount);
+      return Math.min(25, recipientCount, maxBatchSize);
     }
 
-    // For medium campaigns
+    // For medium campaigns, scale with chain capabilities
     if (recipientCount < 500) {
-      return 50;
+      const mediumBatchSize = chainId === '56' ? 100 : 50; // BSC can handle larger batches
+      return Math.min(mediumBatchSize, recipientCount, maxBatchSize);
     }
 
-    // For large campaigns, larger batches are more efficient
+    // For large campaigns, use larger batches within chain limits
     if (recipientCount < 2000) {
-      return 100;
+      return Math.min(100, recipientCount, maxBatchSize);
     }
 
-    // For very large campaigns
-    return 200;
+    // For very large campaigns, use maximum efficient size for the chain
+    return Math.min(maxBatchSize, recipientCount);
   }
 
   /**
