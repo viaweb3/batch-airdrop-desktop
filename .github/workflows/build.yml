@@ -44,7 +44,6 @@ jobs:
       with:
         python-version: '3.x'
 
-  
     - name: Install dependencies
       run: npm ci
       env:
@@ -61,13 +60,6 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-${{ matrix.platform }}-${{ matrix.arch }}
-        path: release/
-        retention-days: 30
-
     - name: Rename artifacts with version
       shell: bash
       run: |
@@ -78,11 +70,27 @@ jobs:
           fi
         done
 
-    - name: Upload artifacts to release
-      if: matrix.platform == 'darwin' && matrix.arch == 'x64'  # Only run once for the first matrix build
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-${{ matrix.platform }}-${{ matrix.arch }}
+        path: release/
+        retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create release
       uses: softprops/action-gh-release@v1
       with:
-        files: release/*
+        files: artifacts/**/*.exe artifacts/**/*.dmg artifacts/**/*.AppImage artifacts/**/*.zip artifacts/**/*.deb
         name: Release ${{ github.ref_name }}
         tag_name: ${{ github.ref_name }}
         body: |
