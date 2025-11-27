@@ -186,7 +186,7 @@ export class ChainService {
       params.push(chainId);
 
       const updateChain = this.db.prepare(`
-        UPDATE evm_chains SET ${fields.join(', ')} WHERE id = ?
+        UPDATE chains SET ${fields.join(', ')} WHERE id = ?
       `);
 
       updateChain.run(...params);
@@ -199,12 +199,12 @@ export class ChainService {
   async deleteEVMChain(chainId: number): Promise<void> {
     try {
       // 检查是否是内置链
-      const chain = await this.db.prepare('SELECT is_custom FROM evm_chains WHERE id = ?').get(chainId) as any;
+      const chain = await this.db.prepare('SELECT is_custom FROM chains WHERE id = ?').get(chainId) as any;
       if (!chain || !chain.is_custom) {
         throw new Error('Cannot delete built-in chain');
       }
 
-      await this.db.prepare('DELETE FROM evm_chains WHERE id = ?').run(chainId);
+      await this.db.prepare('DELETE FROM chains WHERE id = ?').run(chainId);
     } catch (error) {
       logger.error('[ChainService] Failed to delete EVM chain', error as Error, { chainId });
       throw new Error('EVM chain deletion failed');
