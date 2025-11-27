@@ -86,6 +86,7 @@ src/
 - **FileService**: CSV处理、报告生成(PDF/CSV/JSON)
 - **ChainService**: 自定义EVM链、Solana RPC管理
 - **SettingsService**: 应用配置、数据管理
+- **Logger**: Winston结构化日志系统，类型安全的日志记录
 
 ### 🎨 完整UI界面 ✅
 - **Dashboard**: 实时统计、活动监控、快速操作
@@ -173,9 +174,9 @@ npm run test:testnet
 npm run build
 
 # 打包为各平台版本
-npm run build:win      # Windows
-npm run build:mac      # macOS
-npm run build:linux    # Linux
+npm run build:win          # Windows x64
+npm run build:mac-intel    # macOS Intel (x64)
+npm run build:mac-arm      # macOS Apple Silicon (arm64)
 ```
 
 ## 开发提示
