@@ -16,8 +16,8 @@ Thank you for your interest in contributing to our blockchain batch airdrop desk
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- Node.js 24+
+- npm 10+
 - Git
 - Basic knowledge of TypeScript, React, and Electron
 

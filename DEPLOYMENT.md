@@ -1,7 +1,7 @@
 # CryptoCast 部署文档
 
-**文档版本**: v1.0
-**最后更新**: 2024-12-XX
+**文档版本**: v1.2.0
+**最后更新**: 2025-11-27
 **状态**: 生产就绪
 
 ---
@@ -72,8 +72,8 @@ CryptoCast 使用优化的批量转账智能合约来降低 Gas 费用：
 
 **平台支持**:
 - Windows 10+ (x64)
-- macOS 10.15+ (Intel + Apple Silicon)
-- Ubuntu 20.04+ (x64)
+- macOS 10.15+ (Intel x64)
+- macOS 11+ (Apple Silicon arm64)
 
 ### 构建步骤
 
@@ -81,7 +81,7 @@ CryptoCast 使用优化的批量转账智能合约来降低 Gas 费用：
 
 ```bash
 # 克隆代码库
-git clone https://github.com/your-username/cryptocast-desktop.git
+git clone https://github.com/viaweb3/cryptocast-desktop.git
 cd cryptocast-desktop
 
 # 安装依赖
@@ -113,10 +113,10 @@ npm run build:ci
 # 或使用标准构建
 npm run build
 
-# 构建所有平台
-npm run build:win    # Windows
-npm run build:mac    # macOS
-npm run build:linux  # Linux
+# 构建特定平台
+npm run build:win          # Windows x64
+npm run build:mac-intel    # macOS Intel (x64)
+npm run build:mac-arm      # macOS Apple Silicon (arm64)
 ```
 
 #### 4. 构建产物
@@ -124,16 +124,13 @@ npm run build:linux  # Linux
 构建完成后，可执行文件将位于 `release/` 目录：
 
 **Windows**:
-- `CryptoCast Setup 1.0.0.exe` - 安装程序
-- `CryptoCast-1.0.0.exe` - 便携版
+- `CryptoCast Setup 1.2.0.exe` - NSIS 安装程序
 
-**macOS**:
-- `CryptoCast-1.0.0.dmg` - 磁盘映像
-- `CryptoCast-1.0.0-mac.zip` - 压缩包
+**macOS (Intel)**:
+- `CryptoCast-1.2.0-x64.dmg` 或 `CryptoCast-1.2.0-mac.dmg` - 磁盘映像
 
-**Linux**:
-- `CryptoCast-1.0.0.AppImage` - 便携应用
-- `cryptocast-desktop_1.0.0_amd64.deb` - Debian 包
+**macOS (Apple Silicon)**:
+- `CryptoCast-1.2.0-arm64.dmg` - 磁盘映像
 
 ---
 
@@ -153,10 +150,9 @@ npm run build:linux  # Linux
 
 | 平台 | 架构 | 构建脚本 |
 |------|------|----------|
-| ubuntu-latest | x64 | `build:linux` |
 | windows-latest | x64 | `build:win` |
-| macos-latest | x64 | `build:mac` |
-| macos-latest | arm64 | `build:mac` |
+| macos-latest | x64 | `build:mac-intel` |
+| macos-latest | arm64 | `build:mac-arm` |
 
 #### 构建步骤
 
