@@ -116,6 +116,71 @@ export default function CampaignDetail() {
     }
   };
 
+  // Data consistency validation helper
+  const validateDataConsistency = (
+    campaignData: Campaign,
+    recipientsData: Recipient[]
+  ): string[] => {
+    const warnings: string[] = [];
+
+    // Count recipients by status
+    const recipientCounts = {
+      sent: recipientsData.filter(r => r.status === 'success').length,
+      failed: recipientsData.filter(r => r.status === 'failed').length,
+      pending: recipientsData.filter(r => r.status === 'pending' || r.status === 'sending').length,
+    };
+
+    // Validate completed recipients count
+    if (recipientCounts.sent !== campaignData.completedRecipients) {
+      warnings.push(
+        `[数据不一致] 完成数量: 接收者表=${recipientCounts.sent}, 活动表=${campaignData.completedRecipients}, 差异=${Math.abs(recipientCounts.sent - campaignData.completedRecipients)}`
+      );
+    }
+
+    // Validate failed recipients count
+    if (recipientCounts.failed !== campaignData.failedRecipients) {
+      warnings.push(
+        `[数据不一致] 失败数量: 接收者表=${recipientCounts.failed}, 活动表=${campaignData.failedRecipients || 0}, 差异=${Math.abs(recipientCounts.failed - (campaignData.failedRecipients || 0))}`
+      );
+    }
+
+    // Validate total recipients
+    const totalInRecipients = recipientsData.length;
+    if (totalInRecipients !== campaignData.totalRecipients) {
+      warnings.push(
+        `[数据不一致] 总数: 接收者表=${totalInRecipients}, 活动表=${campaignData.totalRecipients}, 差异=${Math.abs(totalInRecipients - campaignData.totalRecipients)}`
+      );
+    }
+
+    // Validate progress calculation
+    const calculatedProgress = campaignData.totalRecipients > 0
+      ? Math.round((campaignData.completedRecipients / campaignData.totalRecipients) * 100)
+      : 0;
+    const actualProgress = totalInRecipients > 0
+      ? Math.round((recipientCounts.sent / totalInRecipients) * 100)
+      : 0;
+
+    if (Math.abs(calculatedProgress - actualProgress) > 1) { // Allow 1% tolerance for rounding
+      warnings.push(
+        `[进度不一致] 计算进度=${calculatedProgress}%, 实际进度=${actualProgress}%, 差异=${Math.abs(calculatedProgress - actualProgress)}%`
+      );
+    }
+
+    if (warnings.length > 0) {
+      console.warn('⚠️ 数据一致性检查发现问题:', warnings);
+      console.warn('活动数据:', {
+        totalRecipients: campaignData.totalRecipients,
+        completedRecipients: campaignData.completedRecipients,
+        failedRecipients: campaignData.failedRecipients,
+      });
+      console.warn('接收者统计:', recipientCounts);
+    } else {
+      console.log('✅ 数据一致性检查通过');
+    }
+
+    return warnings;
+  };
+
   const loadCampaign = async () => {
     setLoading(true);
     try {
@@ -123,83 +188,103 @@ export default function CampaignDetail() {
         throw new Error('Campaign ID is required');
       }
 
-      // Load campaign details from backend
-      if (window.electronAPI?.campaign) {
-        const details = await window.electronAPI.campaign.getDetails(id);
-
-        if (!details) {
-          throw new Error('Campaign not found');
-        }
-
-        // Set campaign data
-        setCampaign({
-          ...details.campaign,
-          chainId: parseInt(details.campaign.chain),
-        });
-
-        // Load transactions
-        try {
-          const txData = await window.electronAPI.campaign.getTransactions(id, {
-            limit: 100,
-          });
-          if (txData && Array.isArray(txData)) {
-            // Filter to only include batch send transactions and number them sequentially
-            const batchTransactions = txData.filter((tx: any) => tx.txType === 'BATCH_SEND');
-            setTransactions(batchTransactions.map((tx: any, index: number) => ({
-              id: tx.id.toString(),
-              batchNumber: index + 1, // Sequential batch number: first transaction = batch 1
-              status: tx.status === 'CONFIRMED' ? 'success' : tx.status === 'PENDING' ? 'sending' : 'failed',
-              addressCount: tx.recipientCount || 0,
-              txHash: tx.txHash,
-              gasUsed: tx.gasUsed?.toString(),
-              createdAt: tx.createdAt,
-            })));
-          }
-        } catch (txError) {
-          console.error('Failed to load transactions:', txError);
-          console.error('Transaction error details:', {
-            campaignId: id,
-            error: txError instanceof Error ? txError.message : txError,
-            stack: txError instanceof Error ? txError.stack : undefined
-          });
-          // Continue loading other data even if transactions fail
-        }
-
-        // Load recipients
-        try {
-          const recipientsData = await window.electronAPI.campaign.getRecipients(id);
-          if (recipientsData && Array.isArray(recipientsData)) {
-            const mappedRecipients = recipientsData.map((r: any) => ({
-              address: r.address,
-              amount: r.amount,
-              status: r.status === 'SENT' ? 'success' : r.status === 'PENDING' ? 'pending' : r.status === 'FAILED' ? 'failed' : 'sending',
-              txHash: r.txHash,
-              error: r.errorMessage,
-              createdAt: r.createdAt,
-              updatedAt: r.updatedAt,
-            }));
-            setRecipients(mappedRecipients);
-
-            // Calculate total airdrop amount using BigNumber for precision
-            const total = recipientsData.reduce((sum: BigNumber, r: any) => {
-              return sum.plus(new BigNumber(r.amount || '0'));
-            }, new BigNumber(0));
-            setTotalAirdropAmount(total.toString());
-          }
-        } catch (recipientsError) {
-          console.error('Failed to load recipients:', recipientsError);
-          // Continue even if recipients fail to load
-        }
-
-        // 刷新钱包余额 - 在加载完活动信息后立即刷新
-        try {
-          await refreshBalances();
-          console.log('Campaign loaded and balances refreshed successfully');
-        } catch (balanceError) {
-          console.warn('Failed to refresh balances after loading campaign:', balanceError);
-          // 不阻止页面加载，只是记录警告
-        }
+      if (!window.electronAPI?.campaign) {
+        throw new Error('Campaign API not available');
       }
+
+      // Load all data in parallel for better performance
+      const [detailsResult, txResult, recipientsResult] = await Promise.allSettled([
+        window.electronAPI.campaign.getDetails(id),
+        window.electronAPI.campaign.getTransactions(id, { limit: 100 }),
+        window.electronAPI.campaign.getRecipients(id)
+      ]);
+
+      // Process campaign details (critical - must succeed)
+      if (detailsResult.status === 'fulfilled' && detailsResult.value) {
+        setCampaign({
+          ...detailsResult.value.campaign,
+          chainId: parseInt(detailsResult.value.campaign.chain),
+        });
+      } else {
+        const error = detailsResult.status === 'rejected' ? detailsResult.reason : 'Campaign not found';
+        throw new Error(error instanceof Error ? error.message : String(error));
+      }
+
+      // Process transactions (non-critical)
+      if (txResult.status === 'fulfilled' && txResult.value && Array.isArray(txResult.value)) {
+        const batchTransactions = txResult.value.filter((tx: any) => tx.txType === 'BATCH_SEND');
+        setTransactions(batchTransactions.map((tx: any, index: number) => ({
+          id: tx.id.toString(),
+          batchNumber: index + 1, // Sequential batch number: first transaction = batch 1
+          status: tx.status === 'CONFIRMED' ? 'success' : tx.status === 'PENDING' ? 'sending' : 'failed',
+          addressCount: tx.recipientCount || 0,
+          txHash: tx.txHash,
+          gasUsed: tx.gasUsed?.toString(),
+          createdAt: tx.createdAt,
+        })));
+      } else {
+        const error = txResult.status === 'rejected' ? txResult.reason : 'Unknown error';
+        console.error('Failed to load transactions:', error);
+        console.error('Transaction error details:', {
+          campaignId: id,
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        setTransactions([]);
+      }
+
+      // Process recipients (non-critical)
+      if (recipientsResult.status === 'fulfilled' && recipientsResult.value && Array.isArray(recipientsResult.value)) {
+        const mappedRecipients = recipientsResult.value.map((r: any) => ({
+          address: r.address,
+          amount: r.amount,
+          status: r.status === 'SENT' ? 'success' : r.status === 'PENDING' ? 'pending' : r.status === 'FAILED' ? 'failed' : 'sending',
+          txHash: r.txHash,
+          error: r.errorMessage,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+        }));
+        setRecipients(mappedRecipients);
+
+        // Calculate total airdrop amount using BigNumber for precision
+        const total = recipientsResult.value.reduce((sum: BigNumber, r: any) => {
+          return sum.plus(new BigNumber(r.amount || '0'));
+        }, new BigNumber(0));
+        setTotalAirdropAmount(total.toString());
+      } else {
+        const error = recipientsResult.status === 'rejected' ? recipientsResult.reason : 'Unknown error';
+        console.error('Failed to load recipients:', error);
+        setRecipients([]);
+        setTotalAirdropAmount('0');
+      }
+
+      // Refresh wallet balances after loading campaign data
+      try {
+        await refreshBalances();
+        console.log('Campaign loaded and balances refreshed successfully');
+      } catch (balanceError) {
+        console.warn('Failed to refresh balances after loading campaign:', balanceError);
+        // Don't block page load, just log the warning
+      }
+
+      // Validate data consistency after all data is loaded
+      if (detailsResult.status === 'fulfilled' && recipientsResult.status === 'fulfilled') {
+        const campaignData = {
+          ...detailsResult.value.campaign,
+          chainId: parseInt(detailsResult.value.campaign.chain),
+        };
+        const recipientsData = recipientsResult.value.map((r: any) => ({
+          address: r.address,
+          amount: r.amount,
+          status: r.status === 'SENT' ? 'success' : r.status === 'PENDING' ? 'pending' : r.status === 'FAILED' ? 'failed' : 'sending',
+          txHash: r.txHash,
+          error: r.errorMessage,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+        }));
+        validateDataConsistency(campaignData, recipientsData);
+      }
+
     } catch (error) {
       console.error('Failed to load campaign:', error);
       alert('加载活动详情失败: ' + (error instanceof Error ? error.message : '未知错误'));
@@ -921,24 +1006,30 @@ export default function CampaignDetail() {
     }
   };
 
-  // Auto-refresh balances every 10 seconds
+  // Auto-refresh campaign data and balances with optimized intervals
   useEffect(() => {
-    if (campaign?.walletAddress && campaign.status === 'SENDING') {
-      refreshBalances();
-      const interval = setInterval(refreshBalances, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [campaign?.walletAddress, campaign?.status, campaign?.chain]);
+    if (!campaign?.walletAddress || !id) return;
 
-  // Auto-refresh campaign data every 5 seconds when sending
-  useEffect(() => {
-    if (campaign?.status === 'SENDING') {
+    // Determine refresh interval based on campaign status
+    let refreshInterval: number | null = null;
+
+    if (campaign.status === 'SENDING') {
+      // SENDING status: Fast refresh every 3 seconds for real-time progress
+      refreshInterval = 3000;
+    } else if (['PAUSED', 'READY', 'FUNDED'].includes(campaign.status)) {
+      // Active but not sending: Moderate refresh every 10 seconds
+      refreshInterval = 10000;
+    }
+    // COMPLETED/FAILED/CREATED status: No auto-refresh
+
+    if (refreshInterval) {
       const interval = setInterval(() => {
-        loadCampaign();
-      }, 10000);
+        loadCampaign(); // loadCampaign includes refreshBalances call
+      }, refreshInterval);
+
       return () => clearInterval(interval);
     }
-  }, [campaign?.status, id]);
+  }, [campaign?.status, campaign?.walletAddress, id]);
 
   
   const formatDate = (dateString: string) => {

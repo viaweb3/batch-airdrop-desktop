@@ -328,14 +328,30 @@ export class CampaignService {
     }
   }
 
-  async updateProgress(id: string, completedCount: number): Promise<void> {
+  async updateProgress(id: string, completedCount?: number): Promise<void> {
     try {
+      // IMPORTANT: Ignore the completedCount parameter and always calculate from recipients table
+      // This ensures data consistency by using a single source of truth
+      const counts = await this.db.prepare(`
+        SELECT
+          COUNT(CASE WHEN status = 'SENT' THEN 1 END) as completed,
+          COUNT(CASE WHEN status = 'FAILED' THEN 1 END) as failed
+        FROM recipients
+        WHERE campaign_id = ?
+      `).get(id) as any;
+
       const now = new Date().toISOString();
       await this.db.prepare(
-        'UPDATE campaigns SET completed_recipients = ?, updated_at = ? WHERE id = ?'
-      ).run(completedCount, now, id);
+        'UPDATE campaigns SET completed_recipients = ?, failed_recipients = ?, updated_at = ? WHERE id = ?'
+      ).run(counts.completed || 0, counts.failed || 0, now, id);
+
+      logger.debug('[CampaignService] Progress updated from aggregation', {
+        campaignId: id,
+        completed: counts.completed || 0,
+        failed: counts.failed || 0
+      });
     } catch (error) {
-      logger.error('[CampaignService] Failed to update campaign progress', error as Error, { id, completedCount });
+      logger.error('[CampaignService] Failed to update campaign progress', error as Error, { id });
       throw new Error('Campaign progress update failed');
     }
   }
@@ -466,13 +482,9 @@ export class CampaignService {
         WHERE campaign_id = ? AND address = ?
       `).run(status, txHash, gasUsed, errorMessage, now, campaignId, address);
 
-      // 更新活动完成数量
-      if (status === 'SENT') {
-        const campaign = await this.getCampaignById(campaignId);
-        if (campaign) {
-          await this.updateProgress(campaignId, campaign.completedRecipients + 1);
-        }
-      }
+      // NOTE: Progress is automatically updated by CampaignExecutor.updateRecipientStatusesTransaction
+      // which uses a transaction to update both recipients and campaigns table atomically.
+      // We don't need to call updateProgress here to avoid double updates.
     } catch (error) {
       logger.error('[CampaignService] Failed to update recipient status', error as Error, { campaignId, address, status });
       throw new Error('Recipient status update failed');
