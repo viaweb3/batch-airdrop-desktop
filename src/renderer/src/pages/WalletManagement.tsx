@@ -11,6 +11,7 @@ import { isSolanaChain, exportPrivateKey, getChainDisplayName, getChainDisplayBa
 export default function WalletManagement() {
   const navigate = useNavigate();
   const [wallets, setWallets] = useState<ActivityWallet[]>([]);
+  const [totalWallets, setTotalWallets] = useState(0);
   const [chains, setChains] = useState<ChainInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -22,23 +23,32 @@ export default function WalletManagement() {
   useEffect(() => {
     loadWallets();
     loadChains();
-  }, []);
+  }, [currentPage]); // Reload when page changes
 
   const loadWallets = async () => {
     setLoading(true);
     try {
       // Load real wallet data from backend
       if (window.electronAPI?.wallet) {
-        const walletsData = await window.electronAPI.wallet.list({
+        const response = await window.electronAPI.wallet.list({
           limit: pageSize,
           offset: (currentPage - 1) * pageSize,
         });
-        setWallets(walletsData);
+        
+        // Handle both old array format (for backward compatibility) and new object format
+        if (Array.isArray(response)) {
+           setWallets(response);
+           setTotalWallets(response.length); // Fallback if no total returned
+        } else {
+           setWallets(response.wallets);
+           setTotalWallets(response.total);
+        }
       }
     } catch (error) {
       console.error('Failed to load wallets:', error);
       // Fallback to empty array
       setWallets([]);
+      setTotalWallets(0);
     } finally {
       setLoading(false);
     }
@@ -57,10 +67,11 @@ export default function WalletManagement() {
 
 
   // 计算分页数据
-  const totalPages = Math.ceil(wallets.length / pageSize);
+  const totalPages = Math.ceil(totalWallets / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedWallets = wallets.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + pageSize, totalWallets);
+  // Data is already paginated from backend, so we display all loaded wallets
+  const displayWallets = wallets;
 
   
   const handleViewDetails = (wallet: ActivityWallet) => {
@@ -191,8 +202,8 @@ export default function WalletManagement() {
             👛
           </div>
           <div className="stat-title">活动钱包总数</div>
-          <div className="stat-value text-primary">{wallets.length}</div>
-          <div className="stat-desc text-info">当前页钱包</div>
+          <div className="stat-value text-primary">{totalWallets}</div>
+          <div className="stat-desc text-info">所有活动钱包</div>
         </div>
 
         <div className="stat bg-base-100 rounded-lg shadow-sm">
@@ -206,7 +217,7 @@ export default function WalletManagement() {
               return status === 'SENDING' || status === 'FUNDED' || status === 'READY' || status === 'ACTIVE';
             }).length}
           </div>
-          <div className="stat-desc text-success">正在进行中</div>
+          <div className="stat-desc text-success">当前页进行中</div>
         </div>
       </div>
 
@@ -223,7 +234,7 @@ export default function WalletManagement() {
               </tr>
             </thead>
             <tbody>
-              {paginatedWallets.map((wallet) => (
+              {displayWallets.map((wallet) => (
                 <tr key={wallet.id} className="hover">
                   <td>
                     <div>
@@ -314,7 +325,7 @@ export default function WalletManagement() {
           </div>
 
           <div className="ml-4 text-sm text-base-content/60">
-            显示 {startIndex + 1}-{Math.min(endIndex, wallets.length)} / 共 {wallets.length} 个钱包
+            显示 {startIndex + 1}-{endIndex} / 共 {totalWallets} 个钱包
           </div>
         </div>
       )}

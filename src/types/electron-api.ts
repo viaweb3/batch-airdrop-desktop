@@ -17,7 +17,9 @@ export type {
   CampaignProgress,
   CreateWalletRequest,
   WalletData,
+  ActivityWallet,
   WalletListOptions,
+  WalletListResponse,
   WalletBalance,
   GetBalanceRequest,
   EstimateGasRequest,
@@ -76,7 +78,7 @@ export interface ElectronAPI {
   wallet: {
     create: (type?: 'evm' | 'solana') => Promise<import('../main/types/ipc').WalletData>;
     getBalance: (address: string, chain: string, tokenAddress?: string) => Promise<string>;
-    list: (options?: import('../main/types/ipc').WalletListOptions) => Promise<import('../main/types/ipc').WalletData[]>;
+    list: (options?: import('../main/types/ipc').WalletListOptions) => Promise<import('../main/types/ipc').WalletListResponse>;
     getBalances: (campaignId: string) => Promise<import('../main/types/ipc').WalletBalance>;
     exportEVMPrivateKey: (privateKeyBase64: string) => Promise<string>;
     exportSolanaPrivateKey: (privateKeyBase64: string) => Promise<string>;

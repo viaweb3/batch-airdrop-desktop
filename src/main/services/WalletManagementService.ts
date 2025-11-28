@@ -2,6 +2,7 @@ import { WalletService } from './WalletService';
 import { ChainService } from './ChainService';
 import type { DatabaseManager } from '../database/sqlite-schema';
 import { NATIVE_TOKEN_ADDRESSES } from '../config/constants';
+import { logger } from '../utils/logger';
 
 export interface ActivityWallet {
   id: string;
@@ -29,6 +30,7 @@ export class WalletManagementService {
   private db: any;
   private walletService: WalletService;
   private chainService: ChainService;
+  private logger = logger.child('WalletManagementService');
 
   constructor(databaseManager: DatabaseManager) {
     this.db = databaseManager.getDatabase();
@@ -44,8 +46,9 @@ export class WalletManagementService {
     chain?: string;
     limit?: number;
     offset?: number;
-  }): Promise<ActivityWallet[]> {
+  }): Promise<{ wallets: ActivityWallet[]; total: number }> {
     try {
+      this.logger.debug('Listing activity wallets', { options });
       let query = `
         SELECT
           c.id,
@@ -75,6 +78,11 @@ export class WalletManagementService {
         query += ' AND (c.chain_id = ? OR c.chain_type = ?)';
         params.push(options.chain, options.chain);
       }
+
+      // Get total count
+      const countQuery = `SELECT COUNT(*) as total FROM (${query})`;
+      const countResult = await this.db.prepare(countQuery).get(...params) as any;
+      const total = countResult?.total || 0;
 
       query += ' ORDER BY c.created_at DESC';
 
@@ -122,9 +130,9 @@ export class WalletManagementService {
         })
       );
 
-      return wallets;
+      return { wallets, total };
     } catch (error) {
-      console.error('Failed to list activity wallets:', error);
+      this.logger.error('Failed to list activity wallets', error as Error);
       throw new Error('Activity wallet listing failed');
     }
   }
@@ -146,6 +154,7 @@ export class WalletManagementService {
     }>;
   } | null> {
     try {
+      this.logger.debug('Getting wallet balances', { campaignId });
       const campaign = await this.db
         .prepare(
           `SELECT wallet_address, chain_type, chain_id, network, token_address, token_symbol
@@ -200,7 +209,7 @@ export class WalletManagementService {
         ],
       };
     } catch (error) {
-      console.error('Failed to get wallet balances:', error);
+      this.logger.error('Failed to get wallet balances', error as Error, { campaignId });
       throw new Error('Wallet balance query failed');
     }
   }
@@ -209,6 +218,7 @@ export class WalletManagementService {
    * 批量刷新钱包余额
    */
   async refreshWalletBalances(campaignIds: string[]): Promise<Map<string, any>> {
+    this.logger.debug('Refreshing wallet balances', { count: campaignIds.length });
     const results = new Map<string, any>();
 
     await Promise.all(
@@ -217,7 +227,7 @@ export class WalletManagementService {
           const balances = await this.getWalletBalances(campaignId);
           results.set(campaignId, balances);
         } catch (error) {
-          console.error(`Failed to refresh balance for campaign ${campaignId}:`, error);
+          this.logger.error(`Failed to refresh balance for campaign ${campaignId}`, error as Error);
           results.set(campaignId, { error: 'Balance refresh failed' });
         }
       })

@@ -20,7 +20,7 @@ export interface ElectronAPI {
   };
   wallet: {
     create: (type?: string) => Promise<{ address: string; privateKeyBase64: string }>;
-    list: (options?: any) => Promise<ActivityWallet[]>;
+    list: (options?: any) => Promise<{ wallets: ActivityWallet[]; total: number } | ActivityWallet[]>;
     getBalance: (address: string, chain: string, tokenAddress?: string, tokenDecimals?: number) => Promise<BalanceData>;
     exportEVMPrivateKey: (privateKeyBase64: string) => Promise<{ success: boolean; privateKey: string }>;
     exportSolanaPrivateKey: (privateKeyBase64: string) => Promise<{ success: boolean; privateKey: string }>;
@@ -312,7 +312,7 @@ export interface ActivityWallet {
   chain: string;
   privateKeyBase64?: string;
   balances: WalletBalance[];
-  status: 'active' | 'pending' | 'completed' | 'failed';
+  status: string;
   totalBalance: string;
   totalCapacity: string;
   createdAt: string;

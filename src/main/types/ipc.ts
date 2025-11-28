@@ -125,10 +125,37 @@ export interface WalletData {
   createdAt?: string;
 }
 
+export interface ActivityWallet {
+  id: string;
+  campaignId: string;
+  campaignName: string;
+  address: string;
+  chain: string;
+  status: string;
+  balances: Array<{
+    tokenAddress: string;
+    tokenSymbol: string;
+    tokenDecimals: number;
+    balance: string;
+    usdValue?: string;
+  }>;
+  totalBalance: string;
+  totalCapacity: string;
+  createdAt: string;
+  updatedAt: string;
+  lastBalanceUpdate?: string;
+  privateKeyBase64?: string;
+}
+
 export interface WalletListOptions {
   type?: 'evm' | 'solana';
   limit?: number;
   offset?: number;
+}
+
+export interface WalletListResponse {
+  wallets: ActivityWallet[];
+  total: number;
 }
 
 export interface WalletBalance {
