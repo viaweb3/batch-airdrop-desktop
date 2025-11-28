@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-11-28
+
+### Changed
+- **CI/CD Workflow**: Optimized macOS build configuration for better native module compatibility
+  - Intel (x64) builds now use `macos-13` runner for native architecture compilation
+  - Apple Silicon (arm64) builds now use `macos-14` runner for ARM64 native compilation
+  - Ensures proper native module compilation (sqlite3, sharp) on correct platforms
+  - Improves backward compatibility for Intel builds and native performance for ARM64
+
+### Fixed
+- **Dependencies**: Regenerated package-lock.json for consistent dependency resolution across environments
+
 ## [1.2.0] - 2025-11-27
 
 ### Added
