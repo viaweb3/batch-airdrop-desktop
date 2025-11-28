@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2025-11-28
+
+### Fixed
+- **Structured Logging**: Replaced console.log statements with Winston logger across IPC handlers
+- **Type Safety**: Enhanced type definitions for IPC communication eliminating 'any' types
+- **Error Handling**: Improved error contexts with proper error objects and contextual logging
+- **Data Security**: Implemented data sanitization for sensitive information in logs
+- **Service Integration**: Enhanced WalletManagementService to return total count in list responses
+
+### Improved
+- **Logging System**: Added specialized logging methods for different modules (blockchain, campaign, wallet, etc.)
+- **Developer Experience**: Added child logger support for module-specific logging contexts
+- **Type Safety**: Enhanced ElectronAPI interface with complete type safety
+- **Code Quality**: Replaced 330+ console statements with structured logging
+
+---
+
 ## [1.4.0] - 2025-11-28
 
 ### Added

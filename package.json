@@ -1,6 +1,6 @@
 {
   "name": "cryptocast-desktop",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "CryptoCast - Secure Batch Reward Distribution Platform",
   "main": "dist/main/index.js",
   "author": "Viaweb3",

@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](.github/workflows/build.yml)
-[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/viaweb3/cryptocast-desktop/releases)
+[![Version](https://img.shields.io/badge/version-1.4.1-blue.svg)](https://github.com/viaweb3/cryptocast-desktop/releases)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-blue.svg)](.github/workflows/build.yml)
 
 ---
